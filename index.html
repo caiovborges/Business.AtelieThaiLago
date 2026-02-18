@@ -20,87 +20,9 @@
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
       rel="stylesheet"
     />
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <script>
-      tailwind.config = {
-        darkMode: "class",
-        theme: {
-          extend: {
-            colors: {
-              primary: "#E6007E", // Thai Magenta
-              secondary: "#1A1A1A", // Charcoal
-              "background-light": "#F9F7F2", // Canvas White
-              "background-dark": "#230f1a",
-              surface: "#FFFFFF",
-              "accent-success": "#00C896",
-              "accent-error": "#FF4D4D",
-            },
-            fontFamily: {
-              display: ["Space Grotesk", "sans-serif"],
-              body: ["Satoshi", "sans-serif"],
-              mono: ["Chivo Mono", "monospace"],
-            },
-            boxShadow: {
-              hard: "4px 4px 0px 0px #E6007E",
-              "hard-dark": "4px 4px 0px 0px #1A1A1A",
-              "hard-hover": "6px 6px 0px 0px #1A1A1A",
-              "hard-sm": "2px 2px 0px 0px #1A1A1A",
-            },
-            borderRadius: {
-              DEFAULT: "4px",
-              sm: "2px",
-            },
-            backgroundImage: {
-              noise:
-                "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E\")",
-            },
-          },
-        },
-      };
-    </script>
-    <style>
-      body {
-        font-family: "Satoshi", sans-serif;
-        background-color: #f9f7f2;
-      }
-      .font-display {
-        font-family: "Space Grotesk", sans-serif;
-      }
-      .font-mono {
-        font-family: "Chivo Mono", monospace;
-      }
-      /* Custom Scrollbar */
-      ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: #f9f7f2;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #1a1a1a;
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #e6007e;
-      }
-    </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "react-router-dom": "https://esm.sh/react-router-dom@^7.13.0",
-    "recharts": "https://esm.sh/recharts@^3.7.0"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
-</head>
+  </head>
   <body>
     <div id="root"></div>
-  <script type="module" src="/index.tsx"></script>
-</body>
+    <script type="module" src="/index.tsx"></script>
+  </body>
 </html>
