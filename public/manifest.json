@@ -1,0 +1,15 @@
+{
+    "short_name": "Ateliê Thai",
+    "name": "Ateliê Thai Lago",
+    "icons": [
+        {
+            "src": "icon.svg",
+            "type": "image/svg+xml",
+            "sizes": "512x512"
+        }
+    ],
+    "start_url": ".",
+    "display": "standalone",
+    "theme_color": "#E6007E",
+    "background_color": "#F9F7F2"
+}
