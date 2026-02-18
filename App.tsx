@@ -12,9 +12,10 @@ import ProposalEditor from './pages/ProposalEditor';
 import Financeiro from './pages/Financeiro';
 import LeadsBoard from './pages/LeadsBoard';
 import CalendarPage from './pages/CalendarPage';
+import Settings from './pages/Settings';
 
 const ProtectedRoute = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, isApproved, profile } = useAuth();
 
   if (loading) {
     return (
@@ -32,6 +33,8 @@ const ProtectedRoute = () => {
   if (!user) {
     return <Navigate to="/login" replace />;
   }
+
+
 
   return (
     <div className="flex min-h-screen w-full bg-background-light text-secondary">
@@ -61,6 +64,7 @@ const App = () => {
             <Route path="proposals" element={<ProposalStudio />} />
             <Route path="proposals/:id" element={<ProposalEditor />} />
             <Route path="financeiro" element={<Financeiro />} />
+            <Route path="settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>
         </Routes>

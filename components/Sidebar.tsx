@@ -5,7 +5,7 @@ import { useAuth } from '../AuthContext';
 const Sidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut, user } = useAuth();
+  const { signOut, user, isAdmin } = useAuth();
 
   const handleLogout = async () => {
     await signOut();
@@ -72,6 +72,13 @@ const Sidebar = () => {
           <span className={`material-symbols-outlined ${getIconClass(location.pathname.startsWith('/proposals'))}`}>description</span>
           <span className="font-display text-sm font-bold uppercase tracking-wider">Propostas</span>
         </NavLink>
+
+        {isAdmin && (
+          <NavLink to="/settings" className={({ isActive }) => getLinkClass(isActive)}>
+            <span className={`material-symbols-outlined ${getIconClass(location.pathname.startsWith('/settings'))}`}>settings</span>
+            <span className="font-display text-sm font-bold uppercase tracking-wider">Configurações</span>
+          </NavLink>
+        )}
       </nav>
 
       <div className="border-t-2 border-secondary p-4 space-y-2">
