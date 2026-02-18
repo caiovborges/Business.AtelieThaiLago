@@ -167,65 +167,65 @@ const ClientRegistry = () => {
    });
 
    return (
-      <div class="flex-1 flex flex-col h-full overflow-hidden relative">
-         <div class="absolute inset-0 z-0 pointer-events-none bg-noise opacity-50 mix-blend-multiply"></div>
+      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+         <div className="absolute inset-0 z-0 pointer-events-none bg-noise opacity-50 mix-blend-multiply"></div>
 
          {/* Header */}
-         <header class="relative z-20 px-10 py-8 pb-4 flex flex-col gap-6">
-            <div class="flex justify-between items-end">
+         <header className="relative z-20 px-4 md:px-10 py-8 pb-4 flex flex-col gap-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                <div>
-                  <h2 class="font-display text-4xl font-bold text-secondary leading-tight">Registro de Clientes</h2>
-                  <p class="font-body text-gray-600 mt-1 max-w-lg">Gerencie os noivos, parceiros e cerimonialistas. Mantenha o seu CRM tão organizado quanto sua paleta de cores.</p>
+                  <h2 className="font-display text-3xl md:text-4xl font-bold text-secondary leading-tight">Registro de Clientes</h2>
+                  <p className="font-body text-gray-600 mt-1 max-w-lg text-sm md:text-base">Gerencie os noivos, parceiros e cerimonialistas. Mantenha o seu CRM organizado.</p>
                </div>
-               <div class="flex gap-2 text-sm font-mono text-gray-500">
-                  <span class="px-2 py-1 bg-white border border-secondary rounded-sm">Total: {clients.length}</span>
-                  <span class="px-2 py-1 bg-white border border-secondary rounded-sm text-accent-success">Filtrados: {filteredClients.length}</span>
+               <div className="flex gap-2 text-xs md:text-sm font-mono text-gray-500">
+                  <span className="px-2 py-1 bg-white border border-secondary rounded-sm">Total: {clients.length}</span>
+                  <span className="px-2 py-1 bg-white border border-secondary rounded-sm text-accent-success">Filtrados: {filteredClients.length}</span>
                </div>
             </div>
 
             {/* Toolbar */}
-            <div class="flex flex-wrap gap-4 items-center justify-between mt-4">
-               <div class="relative group w-full max-w-md">
-                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                     <span class="material-symbols-outlined text-gray-400 group-focus-within:text-primary transition-colors">search</span>
+            <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between mt-4">
+               <div className="relative group w-full md:max-w-md">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                     <span className="material-symbols-outlined text-gray-400 group-focus-within:text-primary transition-colors">search</span>
                   </div>
                   <input
-                     class="block w-full pl-10 pr-3 py-3 border-2 border-secondary rounded-sm bg-white text-secondary placeholder-gray-400 focus:outline-none focus:ring-0 focus:border-primary focus:shadow-hard-sm font-mono text-sm transition-all"
+                     className="block w-full pl-10 pr-3 py-3 border-2 border-secondary rounded-sm bg-white text-secondary placeholder-gray-400 focus:outline-none focus:ring-0 focus:border-primary focus:shadow-hard-sm font-mono text-sm transition-all"
                      placeholder="Buscar por nome, email ou interesse..."
                      type="text"
                      value={searchTerm}
                      onChange={(e) => setSearchTerm(e.target.value)}
                   />
                </div>
-               <div class="flex gap-4">
+               <div className="flex flex-col md:flex-row gap-4">
                   {/* Filter button + dropdown — all inside ref */}
-                  <div class="relative" ref={filterRef}>
+                  <div className="relative" ref={filterRef}>
                      <button
                         onClick={() => setShowFilters(!showFilters)}
-                        class={`px-4 py-3 border-2 border-secondary bg-white hover:bg-gray-50 font-display font-medium text-sm uppercase tracking-wide flex items-center gap-2 shadow-hard-sm active:translate-y-[2px] active:shadow-none transition-all ${showFilters ? 'bg-gray-50 shadow-none translate-y-[2px]' : ''}`}
+                        className={`w-full md:w-auto px-4 py-3 border-2 border-secondary bg-white hover:bg-gray-50 font-display font-medium text-sm uppercase tracking-wide flex items-center justify-center gap-2 shadow-hard-sm active:translate-y-[2px] active:shadow-none transition-all ${showFilters ? 'bg-gray-50 shadow-none translate-y-[2px]' : ''}`}
                      >
-                        <span class="material-symbols-outlined text-lg">filter_list</span>
+                        <span className="material-symbols-outlined text-lg">filter_list</span>
                         Filtros
                         {activeFilterCount > 0 && (
-                           <span class="ml-1 h-5 w-5 bg-primary text-white rounded-full text-xs font-bold flex items-center justify-center">{activeFilterCount}</span>
+                           <span className="ml-1 h-5 w-5 bg-primary text-white rounded-full text-xs font-bold flex items-center justify-center">{activeFilterCount}</span>
                         )}
                      </button>
 
                      {/* Filter Dropdown */}
                      {showFilters && (
-                        <div class="absolute right-0 mt-2 w-72 bg-white border-2 border-secondary shadow-hard z-50 p-4 space-y-4">
-                           <div class="flex items-center justify-between">
-                              <p class="font-display text-sm font-bold uppercase tracking-wider text-secondary">Filtrar por</p>
+                        <div className="absolute right-0 mt-2 w-full md:w-72 bg-white border-2 border-secondary shadow-hard z-50 p-4 space-y-4">
+                           <div className="flex items-center justify-between">
+                              <p className="font-display text-sm font-bold uppercase tracking-wider text-secondary">Filtrar por</p>
                               {activeFilterCount > 0 && (
-                                 <button onClick={clearFilters} class="text-xs font-mono text-primary hover:underline">Limpar</button>
+                                 <button onClick={clearFilters} className="text-xs font-mono text-primary hover:underline">Limpar</button>
                               )}
                            </div>
 
                            {/* Interesse filter */}
                            <div>
-                              <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Interesse</label>
+                              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Interesse</label>
                               <select
-                                 class="w-full bg-surface border-2 border-secondary p-2.5 text-sm focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none appearance-none"
+                                 className="w-full bg-surface border-2 border-secondary p-2.5 text-sm focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none appearance-none"
                                  value={filterInteresse}
                                  onChange={(e) => setFilterInteresse(e.target.value)}
                               >
@@ -238,9 +238,9 @@ const ClientRegistry = () => {
 
                            {/* Estado filter */}
                            <div>
-                              <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Estado</label>
+                              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Estado</label>
                               <select
-                                 class="w-full bg-surface border-2 border-secondary p-2.5 text-sm focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none appearance-none"
+                                 className="w-full bg-surface border-2 border-secondary p-2.5 text-sm focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none appearance-none"
                                  value={filterEstado}
                                  onChange={(e) => setFilterEstado(e.target.value)}
                               >
@@ -253,15 +253,15 @@ const ClientRegistry = () => {
 
                            <button
                               onClick={() => setShowFilters(false)}
-                              class="w-full py-2 border-2 border-secondary bg-primary text-white font-display font-bold text-xs uppercase tracking-wider shadow-hard-sm hover:shadow-hard-hover hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all"
+                              className="w-full py-2 border-2 border-secondary bg-primary text-white font-display font-bold text-xs uppercase tracking-wider shadow-hard-sm hover:shadow-hard-hover hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all"
                            >
                               Aplicar
                            </button>
                         </div>
                      )}
                   </div>
-                  <button onClick={handleNewClient} class="px-6 py-3 border-2 border-secondary bg-primary text-white font-display font-bold text-sm uppercase tracking-wider flex items-center gap-2 shadow-hard hover:shadow-hard-hover hover:-translate-y-0.5 active:translate-y-[2px] active:shadow-none transition-all">
-                     <span class="material-symbols-outlined text-lg">add</span>
+                  <button onClick={handleNewClient} className="w-full md:w-auto px-6 py-3 border-2 border-secondary bg-primary text-white font-display font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-hard hover:shadow-hard-hover hover:-translate-y-0.5 active:translate-y-[2px] active:shadow-none transition-all">
+                     <span className="material-symbols-outlined text-lg">add</span>
                      Novo Cliente
                   </button>
                </div>
@@ -269,19 +269,19 @@ const ClientRegistry = () => {
 
             {/* Active filter badges */}
             {activeFilterCount > 0 && (
-               <div class="flex gap-2 flex-wrap">
+               <div className="flex gap-2 flex-wrap">
                   {filterInteresse && (
-                     <span class="inline-flex items-center gap-1 px-3 py-1 bg-primary/10 border border-primary/30 text-xs font-mono text-primary rounded-sm">
-                        <span class="material-symbols-outlined text-[14px]">{INTERESSE_ICONS[filterInteresse] || 'brush'}</span>
+                     <span className="inline-flex items-center gap-1 px-3 py-1 bg-primary/10 border border-primary/30 text-xs font-mono text-primary rounded-sm">
+                        <span className="material-symbols-outlined text-[14px]">{INTERESSE_ICONS[filterInteresse] || 'brush'}</span>
                         {filterInteresse}
-                        <button onClick={() => setFilterInteresse('')} class="ml-1 hover:text-primary/70"><span class="material-symbols-outlined text-[14px]">close</span></button>
+                        <button onClick={() => setFilterInteresse('')} className="ml-1 hover:text-primary/70"><span className="material-symbols-outlined text-[14px]">close</span></button>
                      </span>
                   )}
                   {filterEstado && (
-                     <span class="inline-flex items-center gap-1 px-3 py-1 bg-primary/10 border border-primary/30 text-xs font-mono text-primary rounded-sm">
-                        <span class="material-symbols-outlined text-[14px]">location_on</span>
+                     <span className="inline-flex items-center gap-1 px-3 py-1 bg-primary/10 border border-primary/30 text-xs font-mono text-primary rounded-sm">
+                        <span className="material-symbols-outlined text-[14px]">location_on</span>
                         {filterEstado}
-                        <button onClick={() => setFilterEstado('')} class="ml-1 hover:text-primary/70"><span class="material-symbols-outlined text-[14px]">close</span></button>
+                        <button onClick={() => setFilterEstado('')} className="ml-1 hover:text-primary/70"><span className="material-symbols-outlined text-[14px]">close</span></button>
                      </span>
                   )}
                </div>
@@ -289,39 +289,39 @@ const ClientRegistry = () => {
          </header>
 
          {/* Grid */}
-         <div class="relative z-10 flex-1 overflow-y-auto px-10 py-6 pb-20">
+         <div className="relative z-10 flex-1 overflow-y-auto px-4 md:px-10 py-6 pb-20">
             {loading ? (
-               <div class="flex items-center justify-center py-20">
-                  <div class="flex flex-col items-center gap-3">
-                     <span class="animate-spin material-symbols-outlined text-4xl text-primary">progress_activity</span>
-                     <p class="font-mono text-sm text-gray-500">Carregando clientes...</p>
+               <div className="flex items-center justify-center py-20">
+                  <div className="flex flex-col items-center gap-3">
+                     <span className="animate-spin material-symbols-outlined text-4xl text-primary">progress_activity</span>
+                     <p className="font-mono text-sm text-gray-500">Carregando clientes...</p>
                   </div>
                </div>
             ) : filteredClients.length === 0 ? (
-               <div class="flex flex-col items-center justify-center py-20 text-center">
-                  <span class="material-symbols-outlined text-6xl text-gray-300 mb-4">group_off</span>
-                  <h3 class="font-display text-xl font-bold text-secondary mb-1">
+               <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <span className="material-symbols-outlined text-6xl text-gray-300 mb-4">group_off</span>
+                  <h3 className="font-display text-xl font-bold text-secondary mb-1">
                      {searchTerm || activeFilterCount > 0 ? 'Nenhum cliente encontrado' : 'Nenhum cliente cadastrado'}
                   </h3>
-                  <p class="font-body text-gray-500 mb-6">
+                  <p className="font-body text-gray-500 mb-6">
                      {searchTerm || activeFilterCount > 0
                         ? 'Tente buscar com outros termos ou remover os filtros.'
                         : 'Comece adicionando seu primeiro cliente!'}
                   </p>
                   {!searchTerm && activeFilterCount === 0 && (
-                     <button onClick={handleNewClient} class="px-6 py-3 border-2 border-secondary bg-primary text-white font-display font-bold text-sm uppercase tracking-wider shadow-hard hover:shadow-hard-hover hover:-translate-y-0.5 transition-all flex items-center gap-2">
-                        <span class="material-symbols-outlined text-lg">add</span>
+                     <button onClick={handleNewClient} className="px-6 py-3 border-2 border-secondary bg-primary text-white font-display font-bold text-sm uppercase tracking-wider shadow-hard hover:shadow-hard-hover hover:-translate-y-0.5 transition-all flex items-center gap-2">
+                        <span className="material-symbols-outlined text-lg">add</span>
                         Novo Cliente
                      </button>
                   )}
                   {activeFilterCount > 0 && (
-                     <button onClick={clearFilters} class="px-4 py-2 text-primary font-display font-bold text-sm uppercase tracking-wider hover:underline">
+                     <button onClick={clearFilters} className="px-4 py-2 text-primary font-display font-bold text-sm uppercase tracking-wider hover:underline">
                         Limpar Filtros
                      </button>
                   )}
                </div>
             ) : (
-               <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
                   {filteredClients.map((client) => {
                      const initials = getInitials(client.name);
                      const colors = initials.map(i => getInitialColor(i));
@@ -333,79 +333,79 @@ const ClientRegistry = () => {
                      return (
                         <div
                            key={client.id}
-                           class="group relative bg-white border-2 border-secondary p-6 flex flex-col gap-4 shadow-hard hover:shadow-hard-hover hover:-translate-y-1 transition-all duration-200 cursor-pointer"
+                           className="group relative bg-white border-2 border-secondary p-6 flex flex-col gap-4 shadow-hard hover:shadow-hard-hover hover:-translate-y-1 transition-all duration-200 cursor-pointer"
                            onClick={() => handleEditClient(client)}
                         >
-                           <div class="flex justify-between items-start">
-                              <div class="flex flex-col">
-                                 <h3 class="font-display text-2xl font-bold text-secondary group-hover:text-primary transition-colors">{client.name}</h3>
+                           <div className="flex justify-between items-start">
+                              <div className="flex flex-col">
+                                 <h3 className="font-display text-2xl font-bold text-secondary group-hover:text-primary transition-colors">{client.name}</h3>
                                  {interesses.length > 0 && (
-                                    <div class="flex flex-wrap gap-1 mt-1">
+                                    <div className="flex flex-wrap gap-1 mt-1">
                                        {interesses.map(int => (
-                                          <span key={int} class="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 border border-primary/30 text-xs font-mono text-primary rounded-sm">
-                                             <span class="material-symbols-outlined text-[14px]">{INTERESSE_ICONS[int] || 'brush'}</span>
+                                          <span key={int} className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 border border-primary/30 text-xs font-mono text-primary rounded-sm">
+                                             <span className="material-symbols-outlined text-[14px]">{INTERESSE_ICONS[int] || 'brush'}</span>
                                              {int}
                                           </span>
                                        ))}
                                     </div>
                                  )}
                               </div>
-                              <div class="flex gap-1">
+                              <div className="flex gap-1">
                                  <button
                                     onClick={(e) => { e.stopPropagation(); handleEditClient(client); }}
-                                    class="text-gray-400 hover:text-primary transition-colors p-1"
+                                    className="text-gray-400 hover:text-primary transition-colors p-1"
                                     title="Editar"
                                  >
-                                    <span class="material-symbols-outlined text-[20px]">edit</span>
+                                    <span className="material-symbols-outlined text-[20px]">edit</span>
                                  </button>
                                  <button
                                     onClick={(e) => { e.stopPropagation(); handleDeleteClient(client.id); }}
-                                    class="text-gray-400 hover:text-accent-error transition-colors p-1"
+                                    className="text-gray-400 hover:text-accent-error transition-colors p-1"
                                     title="Excluir"
                                  >
-                                    <span class="material-symbols-outlined text-[20px]">delete</span>
+                                    <span className="material-symbols-outlined text-[20px]">delete</span>
                                  </button>
                               </div>
                            </div>
 
-                           <div class="space-y-3 pt-2">
+                           <div className="space-y-3 pt-2">
                               {cidadeEstado && (
-                                 <div class="flex items-center gap-3 text-sm font-body text-gray-600">
-                                    <span class="material-symbols-outlined text-lg text-primary">location_on</span>
-                                    <span class="font-mono text-secondary">{cidadeEstado}</span>
+                                 <div className="flex items-center gap-3 text-sm font-body text-gray-600">
+                                    <span className="material-symbols-outlined text-lg text-primary">location_on</span>
+                                    <span className="font-mono text-secondary">{cidadeEstado}</span>
                                  </div>
                               )}
                               {client.email && (
-                                 <div class="flex items-center gap-3 text-sm font-body text-gray-600">
-                                    <span class="material-symbols-outlined text-lg text-gray-400">mail</span>
+                                 <div className="flex items-center gap-3 text-sm font-body text-gray-600">
+                                    <span className="material-symbols-outlined text-lg text-gray-400">mail</span>
                                     <span>{client.email}</span>
                                  </div>
                               )}
                               {client.phone && (
-                                 <div class="flex items-center gap-3 text-sm font-body text-gray-600">
-                                    <span class="material-symbols-outlined text-lg text-gray-400">phone</span>
+                                 <div className="flex items-center gap-3 text-sm font-body text-gray-600">
+                                    <span className="material-symbols-outlined text-lg text-gray-400">phone</span>
                                     <span>{client.phone}</span>
                                  </div>
                               )}
                               {client.instagram && (
-                                 <div class="flex items-center gap-3 text-sm font-body text-gray-600">
-                                    <span class="material-symbols-outlined text-lg text-gray-400">alternate_email</span>
+                                 <div className="flex items-center gap-3 text-sm font-body text-gray-600">
+                                    <span className="material-symbols-outlined text-lg text-gray-400">alternate_email</span>
                                     <span>{client.instagram}</span>
                                  </div>
                               )}
                            </div>
 
-                           <div class="mt-auto pt-4 border-t border-gray-100 flex justify-between items-center">
-                              <div class="flex -space-x-2 overflow-hidden">
+                           <div className="mt-auto pt-4 border-t border-gray-100 flex justify-between items-center">
+                              <div className="flex -space-x-2 overflow-hidden">
                                  {initials.map((init, i) => (
-                                    <div key={i} class={`inline-block h-8 w-8 rounded-full ring-2 ring-white ${colors[i]} flex items-center justify-center text-xs font-bold border border-secondary`}>
+                                    <div key={i} className={`inline-block h-8 w-8 rounded-full ring-2 ring-white ${colors[i]} flex items-center justify-center text-xs font-bold border border-secondary`}>
                                        {init}
                                     </div>
                                  ))}
                               </div>
                               <button
                                  onClick={(e) => { e.stopPropagation(); navigate('/events'); }}
-                                 class="font-display font-bold text-sm uppercase tracking-wide border-b-2 border-primary pb-0.5 hover:text-primary hover:border-secondary transition-colors bg-transparent cursor-pointer"
+                                 className="font-display font-bold text-sm uppercase tracking-wide border-b-2 border-primary pb-0.5 hover:text-primary hover:border-secondary transition-colors bg-transparent cursor-pointer"
                               >
                                  Ver Eventos
                               </button>

@@ -15,7 +15,8 @@ import CalendarPage from './pages/CalendarPage';
 import Settings from './pages/Settings';
 
 const ProtectedRoute = () => {
-  const { user, loading, isApproved, profile } = useAuth();
+  const { user, loading } = useAuth();
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
 
   if (loading) {
     return (
@@ -34,12 +35,28 @@ const ProtectedRoute = () => {
     return <Navigate to="/login" replace />;
   }
 
-
-
   return (
     <div className="flex min-h-screen w-full bg-background-light text-secondary">
-      <Sidebar />
-      <main className="flex-1 flex flex-col min-w-0">
+      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+
+      <main className="flex-1 flex flex-col min-w-0 transition-all duration-300">
+        {/* Mobile Header */}
+        <div className="lg:hidden flex items-center justify-between p-4 border-b-2 border-secondary bg-surface sticky top-0 z-30">
+          <div className="flex items-center gap-3">
+            <div
+              className="h-8 w-8 rounded-full bg-cover bg-center border-2 border-secondary shadow-sm"
+              style={{ backgroundImage: 'url("https://picsum.photos/200/200?random=1")' }}
+            ></div>
+            <h1 className="font-display text-lg font-bold leading-none tracking-tight text-secondary">Ateliê Thai Lago</h1>
+          </div>
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 border-2 border-secondary rounded-sm hover:bg-gray-100 active:bg-gray-200 transition-colors"
+          >
+            <span className="material-symbols-outlined">menu</span>
+          </button>
+        </div>
+
         <Outlet />
       </main>
     </div>

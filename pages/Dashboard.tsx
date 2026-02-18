@@ -211,10 +211,10 @@ const Dashboard = () => {
   return (
     <div className="flex-1 overflow-y-auto p-6 md:p-10 bg-background-light">
       {/* Header */}
-      <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <div className="mb-6 md:mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <h2 className="font-display text-4xl font-black tracking-tight text-secondary md:text-5xl">Studio Dashboard</h2>
-          <p className="mt-2 font-mono text-gray-500">Visão geral do seu império criativo &bull; <span className="text-primary font-bold capitalize">{currentMonth}</span></p>
+          <h2 className="font-display text-3xl md:text-5xl font-black tracking-tight text-secondary">Studio Dashboard</h2>
+          <p className="mt-2 font-mono text-xs md:text-base text-gray-500">Visão geral do seu império criativo &bull; <span className="text-primary font-bold capitalize">{currentMonth}</span></p>
         </div>
       </div>
 
@@ -416,7 +416,7 @@ const Dashboard = () => {
                     title="Gerenciar Categorias"
                   >
                     <span className="material-symbols-outlined text-[16px]">category</span>
-                    <span className="hidden md:inline">Categorias</span>
+                    <span className="inline">Categorias</span>
                   </button>
 
                   {showCatManager && (
@@ -516,18 +516,18 @@ const Dashboard = () => {
                 </button>
               </div>
 
-              <div className="grid grid-cols-12 gap-3 items-end">
-                <div className="col-span-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
+                <div className="md:col-span-1 lg:col-span-3">
                   <label className="block text-xs font-mono text-gray-500 mb-1">Data</label>
                   <input className={`w-full bg-white border-2 border-gray-200 text-sm font-mono p-2 focus:ring-0 outline-none transition-colors rounded-none ${addTipo === 'receita' ? 'focus:border-accent-success' : 'focus:border-accent-error'}`}
                     type="date" value={addDate} onChange={(e) => setAddDate(e.target.value)} disabled={adding} />
                 </div>
-                <div className="col-span-3">
+                <div className="md:col-span-2 lg:col-span-3">
                   <label className="block text-xs font-mono text-gray-500 mb-1">Descrição</label>
                   <input className={`w-full bg-white border-2 border-gray-200 text-sm font-body p-2 focus:ring-0 outline-none transition-colors rounded-none placeholder:text-gray-300 ${addTipo === 'receita' ? 'focus:border-accent-success' : 'focus:border-accent-error'}`}
-                    placeholder="Ex: Venda de material, Aluguel..." type="text" value={addDesc} onChange={(e) => setAddDesc(e.target.value)} disabled={adding} />
+                    placeholder="Ex: Venda..." type="text" value={addDesc} onChange={(e) => setAddDesc(e.target.value)} disabled={adding} />
                 </div>
-                <div className="col-span-3">
+                <div className="md:col-span-1 lg:col-span-3">
                   <label className="block text-xs font-mono text-gray-500 mb-1">Categoria</label>
                   <select className={`w-full bg-white border-2 border-gray-200 text-sm p-2 focus:ring-0 outline-none transition-colors rounded-none appearance-none ${addTipo === 'receita' ? 'focus:border-accent-success' : 'focus:border-accent-error'}`}
                     value={addCatId} onChange={(e) => setAddCatId(e.target.value)} disabled={adding}>
@@ -535,7 +535,7 @@ const Dashboard = () => {
                     {catFiltered.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                   </select>
                 </div>
-                <div className="col-span-3">
+                <div className="md:col-span-1 lg:col-span-3">
                   <label className="block text-xs font-mono text-gray-500 mb-1">Valor</label>
                   <input className={`w-full bg-white border-2 border-gray-200 text-sm font-mono p-2 text-right focus:ring-0 outline-none transition-colors rounded-none placeholder:text-gray-300 font-medium ${addTipo === 'receita' ? 'focus:border-accent-success text-accent-success' : 'focus:border-accent-error text-accent-error'}`}
                     placeholder="0,00" type="text" value={addAmount} onChange={(e) => setAddAmount(e.target.value)} disabled={adding}
@@ -544,7 +544,7 @@ const Dashboard = () => {
               </div>
 
               <button onClick={handleAddTransaction} disabled={adding || !addDesc.trim() || !addAmount}
-                className={`w-full mt-3 flex items-center justify-center gap-2 bg-white border-2 font-display font-bold text-sm py-2.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${addTipo === 'receita'
+                className={`w-full mt-4 flex items-center justify-center gap-2 bg-white border-2 font-display font-bold text-sm py-3 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${addTipo === 'receita'
                   ? 'border-accent-success text-accent-success hover:bg-accent-success hover:text-white shadow-[2px_2px_0px_0px_#00C896] hover:shadow-none hover:translate-x-[1px] hover:translate-y-[1px]'
                   : 'border-accent-error text-accent-error hover:bg-accent-error hover:text-white shadow-[2px_2px_0px_0px_#FF4D4D] hover:shadow-none hover:translate-x-[1px] hover:translate-y-[1px]'
                   }`}>
