@@ -27,7 +27,7 @@ interface ProximoEvento {
   nome: string;
   data_evento: string | null;
   status: string;
-  servico: string | null;
+  servico: string | string[] | null;
   clients?: { name: string } | null;
 }
 
@@ -345,7 +345,7 @@ const Dashboard = () => {
                         <div>
                           <p className="font-mono text-xs font-bold text-primary mb-1">{dateStr}</p>
                           <p className="font-display text-sm font-bold text-secondary group-hover:text-primary transition-colors">{event.nome}</p>
-                          <p className="text-xs text-gray-500">{event.clients?.name || event.servico || ''}</p>
+                          <p className="text-xs text-gray-500">{event.clients?.name || (Array.isArray(event.servico) ? event.servico.join(', ') : event.servico) || ''}</p>
                         </div>
                         <span className={`rounded-full border border-secondary px-2 py-0.5 font-mono text-[10px] font-medium uppercase ${sc.bg} ${sc.text}`}>
                           {event.status}

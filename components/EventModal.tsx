@@ -23,7 +23,7 @@ export interface EventFormData {
     nome: string;
     client_id: string | null;
     data_evento: string;
-    servico: string;
+    servico: string | string[];
     status: string;
     cidade_id: number | null;
     local: string;
@@ -47,6 +47,8 @@ const SERVICOS = [
     'Árvore de Digitais',
     'Aquarela dos Convidados',
     'Pintura dos Noivos',
+    'Identidade Visual',
+    'Outros',
 ];
 
 const STATUS_COLORS: Record<string, string> = {
@@ -62,7 +64,7 @@ const EventModal = ({ isOpen, onClose, onSave, editingEvent }: EventModalProps) 
     const [nome, setNome] = useState('');
     const [clientId, setClientId] = useState<string>('');
     const [dataEvento, setDataEvento] = useState('');
-    const [servico, setServico] = useState('');
+    const [servicos, setServicos] = useState<string[]>([]);
     const [status, setStatus] = useState('Confirmado');
     const [local, setLocal] = useState('');
     const [observacoes, setObservacoes] = useState('');
@@ -100,7 +102,12 @@ const EventModal = ({ isOpen, onClose, onSave, editingEvent }: EventModalProps) 
             setNome(editingEvent.nome || '');
             setClientId(editingEvent.client_id || '');
             setDataEvento(editingEvent.data_evento || '');
-            setServico(editingEvent.servico || '');
+
+            const existingServicos = editingEvent.servico
+                ? (Array.isArray(editingEvent.servico) ? editingEvent.servico : [editingEvent.servico])
+                : [];
+            setServicos(existingServicos);
+
             setStatus(editingEvent.status === 'Pendente' ? 'Confirmado' : (editingEvent.status || 'Confirmado'));
             setLocal(editingEvent.local || '');
             setObservacoes(editingEvent.observacoes || '');
@@ -114,8 +121,10 @@ const EventModal = ({ isOpen, onClose, onSave, editingEvent }: EventModalProps) 
             setNome('');
             setClientId('');
             setDataEvento('');
-            setServico('');
-            setStatus('Pendente');
+            setClientId('');
+            setDataEvento('');
+            setServicos([]);
+            setStatus('Confirmado');
             setLocal('');
             setObservacoes('');
             setSelectedEstadoId(null);
@@ -166,7 +175,7 @@ const EventModal = ({ isOpen, onClose, onSave, editingEvent }: EventModalProps) 
                 nome,
                 client_id: clientId || null,
                 data_evento: dataEvento,
-                servico,
+                servico: servicos,
                 status,
                 cidade_id: selectedCidadeId,
                 local,
@@ -176,7 +185,7 @@ const EventModal = ({ isOpen, onClose, onSave, editingEvent }: EventModalProps) 
             setNome('');
             setClientId('');
             setDataEvento('');
-            setServico('');
+            setServicos([]);
             setStatus('Confirmado');
             setLocal('');
             setObservacoes('');
@@ -264,18 +273,27 @@ const EventModal = ({ isOpen, onClose, onSave, editingEvent }: EventModalProps) 
                     {/* Serviço + Status */}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-secondary mb-1">Serviço</label>
-                            <select
-                                className="w-full bg-surface border-2 border-secondary p-3 text-sm focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none appearance-none"
-                                value={servico}
-                                onChange={(e) => setServico(e.target.value)}
-                                disabled={saving}
-                            >
-                                <option value="">Selecionar serviço...</option>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-secondary mb-1">Serviços</label>
+                            <div className="flex flex-col gap-2 p-3 bg-surface border-2 border-secondary h-48 overflow-y-auto">
                                 {SERVICOS.map(s => (
-                                    <option key={s} value={s}>{s}</option>
+                                    <label key={s} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 -mx-1 rounded">
+                                        <input
+                                            type="checkbox"
+                                            className="w-4 h-4 text-primary border-2 border-secondary rounded-sm focus:ring-0 focus:ring-offset-0"
+                                            checked={servicos.includes(s)}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setServicos(prev => [...prev, s]);
+                                                } else {
+                                                    setServicos(prev => prev.filter(item => item !== s));
+                                                }
+                                            }}
+                                            disabled={saving}
+                                        />
+                                        <span className="text-sm text-secondary">{s}</span>
+                                    </label>
                                 ))}
-                            </select>
+                            </div>
                         </div>
                         <div>
                             <label className="block text-xs font-bold uppercase tracking-wider text-secondary mb-1">Status</label>

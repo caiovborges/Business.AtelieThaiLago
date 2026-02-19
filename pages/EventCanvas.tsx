@@ -14,6 +14,8 @@ const SERVICO_ICONS: Record<string, string> = {
    'Árvore de Digitais': 'nature',
    'Aquarela dos Convidados': 'palette',
    'Pintura dos Noivos': 'brush',
+   'Identidade Visual': 'design_services',
+   'Outros': 'star',
 };
 
 interface SupabaseEvento {
@@ -21,7 +23,7 @@ interface SupabaseEvento {
    nome: string;
    client_id: string | null;
    data_evento: string | null;
-   servico: string | null;
+   servico: string | string[] | null;
    status: string;
    cidade_id: number | null;
    local: string | null;
@@ -274,12 +276,18 @@ const EventCanvas = () => {
                                           <span className={`px-2 py-0.5 border text-[10px] font-bold uppercase tracking-wider ${STATUS_COLORS[event.status] || 'bg-gray-100 text-gray-600 border-gray-300'}`}>
                                              {event.status}
                                           </span>
-                                          {event.servico && (
-                                             <span className="flex items-center gap-1 px-2 py-0.5 bg-primary/10 border border-primary/30 text-[10px] font-mono text-primary">
-                                                <span className="material-symbols-outlined text-[12px]">{SERVICO_ICONS[event.servico] || 'brush'}</span>
-                                                {event.servico}
-                                             </span>
-                                          )}
+                                          {(() => {
+                                             const servicos = Array.isArray(event.servico)
+                                                ? event.servico
+                                                : event.servico ? [event.servico] : [];
+
+                                             return servicos.map(s => (
+                                                <span key={s} className="flex items-center gap-1 px-2 py-0.5 bg-primary/10 border border-primary/30 text-[10px] font-mono text-primary">
+                                                   <span className="material-symbols-outlined text-[12px]">{SERVICO_ICONS[s] || 'brush'}</span>
+                                                   {s}
+                                                </span>
+                                             ));
+                                          })()}
                                           {(cidadeEstado || event.local) && (
                                              <span className="flex items-center gap-1 text-[11px] font-mono font-medium text-gray-500">
                                                 <span className="material-symbols-outlined text-[14px]">location_on</span>
@@ -329,17 +337,18 @@ const EventCanvas = () => {
                      </React.Fragment>
                   ))}
                </div>
-            )}
-         </div>
+            )
+            }
+         </div >
 
          {/* Event Modal */}
-         <EventModal
+         < EventModal
             isOpen={modalOpen}
             onClose={handleCloseModal}
             onSave={handleSaveEvent}
             editingEvent={editingEvent}
          />
-      </div>
+      </div >
    );
 };
 
