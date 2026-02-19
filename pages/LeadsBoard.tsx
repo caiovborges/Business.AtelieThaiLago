@@ -202,6 +202,20 @@ const LeadsBoard = () => {
                 const dateB = b.event_date ? new Date(b.event_date).getTime() : 9999999999999;
                 return dateA - dateB;
             }
+            if (sortOption === 'followup_asc') {
+                const nextA = getNextFollowUp(a);
+                const nextB = getNextFollowUp(b);
+
+                // If both have follow-ups, compare dates (earlier/overdue first)
+                if (nextA && nextB) {
+                    return new Date(nextA.scheduled_at).getTime() - new Date(nextB.scheduled_at).getTime();
+                }
+                // Lead with follow-up comes first
+                if (nextA) return -1;
+                if (nextB) return 1;
+
+                return 0;
+            }
             return 0;
         });
 
@@ -283,6 +297,7 @@ const LeadsBoard = () => {
                                 <option value="created_at_desc">Criado em (Recentes)</option>
                                 <option value="event_date_asc">Data do Evento (Próximos)</option>
                                 <option value="event_date_desc">Data do Evento (Distantes)</option>
+                                <option value="followup_asc">Próximo Follow-up</option>
                             </select>
                             <span className="absolute inset-y-0 right-3 flex items-center pointer-events-none material-symbols-outlined text-gray-500 text-sm">
                                 sort
