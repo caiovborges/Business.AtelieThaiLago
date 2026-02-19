@@ -31,6 +31,7 @@ export interface LeadFormData {
 
 export interface EditingLead extends LeadFormData {
     id: string;
+    created_at: string;
     _estado_id?: number | null;
 }
 

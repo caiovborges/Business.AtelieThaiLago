@@ -20,6 +20,7 @@ const LeadsBoard = () => {
     const [leadsWithProposals, setLeadsWithProposals] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [sortOption, setSortOption] = useState<string>('created_at_desc'); // Default sort
 
     // Modal State
     const [modalOpen, setModalOpen] = useState(false);
@@ -137,10 +138,39 @@ const LeadsBoard = () => {
     };
 
     // Filter logic
-    const filteredLeads = leads.filter(l =>
-        l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (l.email || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredLeads = leads
+        .filter(l =>
+            l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (l.email || '').toLowerCase().includes(searchTerm.toLowerCase())
+        )
+        .sort((a, b) => {
+            if (sortOption === 'created_at_desc') {
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+            }
+            if (sortOption === 'event_date_desc') {
+                // Event dates: Future first? Or just simple date desc?
+                // User asked "mais recentes em cima".
+                // Usually "Recent" for events means "Soonest" or "Newest created"?
+                // Let's assume User means "Latest date" (furthest in future) on top? Or "Most recent past"?
+                // Actually "mais recentes" for *Future* events usually means "Soonest to happen".
+                // But context of "date of event" usually implies chronological order.
+                // Let's stick to standard date sorting:
+                // Descending: Newest/Future-est first.
+                // Ascending: Oldest/Soonest first.
+
+                const dateA = a.event_date ? new Date(a.event_date).getTime() : 0;
+                const dateB = b.event_date ? new Date(b.event_date).getTime() : 0;
+                return dateB - dateA;
+            }
+            if (sortOption === 'event_date_asc') {
+                // For Ascending (Soonest first), we want non-empty dates first?
+                // Or maybe put empty dates at the end.
+                const dateA = a.event_date ? new Date(a.event_date).getTime() : 9999999999999; // Far future if null
+                const dateB = b.event_date ? new Date(b.event_date).getTime() : 9999999999999;
+                return dateA - dateB;
+            }
+            return 0;
+        });
 
     // Group by status
     const leadsByStatus = PIPELINE_STAGES.reduce((acc, stage) => {
@@ -168,15 +198,34 @@ const LeadsBoard = () => {
                     </button>
                 </div>
 
-                {/* Search */}
-                <div className="relative max-w-md">
-                    <span className="absolute inset-y-0 left-3 flex items-center material-symbols-outlined text-gray-400">search</span>
-                    <input
-                        className="w-full pl-10 pr-4 py-2 border-2 border-secondary rounded-sm font-mono text-sm focus:border-primary outline-none focus:shadow-hard-sm transition-all"
-                        placeholder="Buscar lead por nome ou email..."
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                    />
+                {/* Controls */}
+                <div className="flex gap-4 items-center">
+                    {/* Search */}
+                    <div className="relative flex-1 max-w-md">
+                        <span className="absolute inset-y-0 left-3 flex items-center material-symbols-outlined text-gray-400">search</span>
+                        <input
+                            className="w-full pl-10 pr-4 py-2 border-2 border-secondary rounded-sm font-mono text-sm focus:border-primary outline-none focus:shadow-hard-sm transition-all"
+                            placeholder="Buscar lead por nome ou email..."
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+
+                    {/* Sort */}
+                    <div className="relative">
+                        <select
+                            value={sortOption}
+                            onChange={(e) => setSortOption(e.target.value)}
+                            className="appearance-none pl-4 pr-10 py-2 border-2 border-secondary rounded-sm font-mono text-sm bg-white focus:border-primary outline-none focus:shadow-hard-sm transition-all cursor-pointer"
+                        >
+                            <option value="created_at_desc">Criado em (Recentes)</option>
+                            <option value="event_date_asc">Data do Evento (Próximos)</option>
+                            <option value="event_date_desc">Data do Evento (Distantes)</option>
+                        </select>
+                        <span className="absolute inset-y-0 right-3 flex items-center pointer-events-none material-symbols-outlined text-gray-500 text-sm">
+                            sort
+                        </span>
+                    </div>
                 </div>
             </header>
 
