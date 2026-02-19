@@ -26,9 +26,23 @@ interface Proposta {
     observacoes: string | null;
     lead_id: string | null;
     leads?: { name: string } | null;
+    tipo_servico: string | null;
+    dimensoes: string | null;
 }
 
+const SERVICE_OPTIONS = [
+    'Pintura dos Noivos',
+    'Aquarela dos Convidados',
+    'Identidade Visual',
+    'Árvore de Digitais',
+    'Outros'
+];
+
+// Plans for specific services
 const PLAN_OPTIONS = ['Herança', 'Memorias', 'Lembranças', 'Encontros'];
+
+// Options for Tree service
+const TREE_OPTIONS = ['Com Moldura', 'Sem Moldura'];
 const STATUS_OPTIONS = ['Rascunho', 'Enviada', 'Aprovada', 'Recusada'];
 
 const ProposalEditor = () => {
@@ -53,6 +67,18 @@ const ProposalEditor = () => {
     const [distanciaKm, setDistanciaKm] = useState('');
     const [custoDeslocamento, setCustoDeslocamento] = useState('');
     const [observacoes, setObservacoes] = useState('');
+    const [tipoServico, setTipoServico] = useState('Pintura dos Noivos');
+    const [dimensoes, setDimensoes] = useState('');
+
+    // Update title when Lead or Service changes
+    useEffect(() => {
+        if (!loading && !proposta) return; // Don't run on initial load if no proposal
+        if (titulo === 'Nova Proposta' || titulo.startsWith('Proposta - ')) {
+            const lName = leads.find(l => l.id === leadId)?.name || 'Cliente';
+            // Only auto-update if it looks like an auto-generated title
+            setTitulo(`Proposta - ${lName} - ${tipoServico}`);
+        }
+    }, [leadId, tipoServico, leads]);
 
     const fetchData = async () => {
         if (!id) return;
@@ -74,24 +100,38 @@ const ProposalEditor = () => {
             setDistanciaKm(String(p.distancia_km || ''));
             setCustoDeslocamento(String(p.custo_deslocamento || ''));
             setObservacoes(p.observacoes || '');
+            setTipoServico(p.tipo_servico || 'Pintura dos Noivos');
+            setDimensoes(p.dimensoes || '');
         }
 
         let currentItens = (itensRes.data || []) as PropostaItem[];
+        let serviceType = propostaRes.data?.tipo_servico || 'Pintura dos Noivos';
 
-        // Ensure all 4 plans exist
-        const missingPlans = PLAN_OPTIONS.filter(plan => !currentItens.some(i => i.descricao === plan));
-        if (missingPlans.length > 0) {
-            const newItems = missingPlans.map(plan => ({
-                id: `temp-${plan}`, // Temp ID until saved
-                descricao: plan,
-                quantidade: 1,
-                valor_unitario: 0
-            }));
-            currentItens = [...currentItens, ...newItems];
+        // Logic to ensure items exist based on service type
+        let requiredItems: string[] = [];
+
+        if (['Pintura dos Noivos', 'Aquarela dos Convidados', 'Identidade Visual'].includes(serviceType)) {
+            requiredItems = PLAN_OPTIONS;
+        } else if (serviceType === 'Árvore de Digitais') {
+            requiredItems = TREE_OPTIONS;
         }
+        // 'Outros' doesn't enforce items
 
-        // Sort by predefined order
-        currentItens.sort((a, b) => PLAN_OPTIONS.indexOf(a.descricao) - PLAN_OPTIONS.indexOf(b.descricao));
+        if (requiredItems.length > 0) {
+            const missing = requiredItems.filter(req => !currentItens.some(i => i.descricao === req));
+            if (missing.length > 0) {
+                const newItems = missing.map(desc => ({
+                    id: `temp-${desc}`,
+                    descricao: desc,
+                    quantidade: 1,
+                    valor_unitario: 0
+                }));
+                currentItens = [...currentItens, ...newItems];
+            }
+
+            // Sort
+            currentItens.sort((a, b) => requiredItems.indexOf(a.descricao) - requiredItems.indexOf(b.descricao));
+        }
 
         setItens(currentItens);
         if (leadsRes.data) setLeads(leadsRes.data as Lead[]);
@@ -119,6 +159,8 @@ const ProposalEditor = () => {
             distancia_km: parseAmount(distanciaKm),
             custo_deslocamento: parseAmount(custoDeslocamento),
             observacoes: observacoes || null,
+            tipo_servico: tipoServico,
+            dimensoes: dimensoes || null,
             updated_at: new Date().toISOString(),
         }).eq('id', id);
 
@@ -129,18 +171,30 @@ const ProposalEditor = () => {
         }
 
         // 2. Save Items (Plans)
+
+        // Determine sorting order based on current service type
+        let sortOrder: string[] = [];
+        if (['Pintura dos Noivos', 'Aquarela dos Convidados', 'Identidade Visual'].includes(tipoServico)) {
+            sortOrder = PLAN_OPTIONS;
+        } else if (tipoServico === 'Árvore de Digitais') {
+            sortOrder = TREE_OPTIONS;
+        }
+
         for (const item of itens) {
+            // Basic validation: Don't save empty items for 'Outros' if you want, but likely fine to save all
             if (item.id.startsWith('temp-')) {
                 // Insert new
                 await supabase.from('proposta_itens').insert({
                     proposta_id: id,
                     descricao: item.descricao,
-                    quantidade: 1,
+                    quantidade: item.quantidade || 1,
                     valor_unitario: Number(item.valor_unitario),
                 });
             } else {
                 // Update existing
                 await supabase.from('proposta_itens').update({
+                    descricao: item.descricao,
+                    quantidade: item.quantidade || 1,
                     valor_unitario: Number(item.valor_unitario),
                 }).eq('id', item.id);
             }
@@ -149,7 +203,13 @@ const ProposalEditor = () => {
         // Refresh to get real IDs
         const { data: refreshedItems } = await supabase.from('proposta_itens').select('*').eq('proposta_id', id);
         if (refreshedItems) {
-            const sorted = (refreshedItems as PropostaItem[]).sort((a, b) => PLAN_OPTIONS.indexOf(a.descricao) - PLAN_OPTIONS.indexOf(b.descricao));
+            let sorted = refreshedItems as PropostaItem[];
+            if (sortOrder.length > 0) {
+                sorted.sort((a, b) => sortOrder.indexOf(a.descricao) - sortOrder.indexOf(b.descricao));
+            } else {
+                // For 'Outros', sort by created_at usually, or just keep as is
+                sorted.sort((a, b) => a.id.localeCompare(b.id)); // fallback
+            }
             setItens(sorted);
         }
 
@@ -173,6 +233,134 @@ const ProposalEditor = () => {
         }
         setItens(newItens);
         // Note: We don't auto-save on blur here to avoid too many requests, user should click Save
+    };
+
+    // Handler when changing service type to ensure correct items exist
+    const handleServiceChange = async (newService: string) => {
+        setTipoServico(newService);
+
+        // Check if we need to swap items
+        // NOTE: This logic wipes existing items if switching between incompatible types to avoid clutter?
+        // Or strictly appends? The user didn't specify, but usually clear switch is better for fixed plans.
+        // However, wiping database items immediately is dangerous. 
+        // We will just fetch/initialize in memory what is needed.
+
+        let required: string[] = [];
+        if (['Pintura dos Noivos', 'Aquarela dos Convidados', 'Identidade Visual'].includes(newService)) {
+            required = PLAN_OPTIONS;
+        } else if (newService === 'Árvore de Digitais') {
+            required = TREE_OPTIONS;
+        }
+
+        if (required.length > 0) {
+            // Filter current items to only those relevant or keep 'Outros' items?
+            // User likely wants a clean slate for the specific type.
+            // Let's filter visually first.
+
+            // To properly switch, we ideally should remove old items that don't belong to the new set IF they are standard items
+            // But 'Outros' might have custom items.
+
+            // Safe approach: Remove items that exactly match other known standard fixed options NOT in the new set?
+            // Actually, simpler: Just ensure the new required ones are present.
+
+            const currentDesc = itens.map(i => i.descricao);
+            const missing = required.filter(r => !currentDesc.includes(r));
+
+            const newTemps = missing.map(desc => ({
+                id: `temp-${desc}`,
+                descricao: desc,
+                quantidade: 1,
+                valor_unitario: 0
+            }));
+
+            // If we are switching FROM a fixed set TO another fixed set, we might want to hide/remove the old fixed set.
+            // We can remove items from state if they are in dummy/temp status or even real status if we want to be aggressive.
+            // Let's keep it additive for now with a filter for the UI view? No, that's complex.
+            // Let's reset `itens` to ONLY the required ones if it's a fixed type?
+
+            if (newService !== 'Outros') {
+                // If specific service, reset items to just that service's items (plus any existing custom ones?)
+                // Let's just set strictly to the required items for fixed types.
+                // We find existing items that match.
+
+                const relevant = itens.filter(i => required.includes(i.descricao));
+                const final = [...relevant, ...newTemps];
+                final.sort((a, b) => required.indexOf(a.descricao) - required.indexOf(b.descricao));
+                setItens(final);
+            } else {
+                // If Outros, keep everything? Or clear fixed items?
+                // Maybe clear fixed items.
+                const allFixed = [...PLAN_OPTIONS, ...TREE_OPTIONS];
+                const clean = itens.filter(i => !allFixed.includes(i.descricao));
+                setItens(clean);
+            }
+        } else {
+            // Outros: Start empty or keep existing custom
+            const allFixed = [...PLAN_OPTIONS, ...TREE_OPTIONS];
+            const clean = itens.filter(i => !allFixed.includes(i.descricao));
+            setItens(clean);
+        }
+    };
+
+    const handleAddItem = async () => {
+        // Only for 'Outros'
+        const newItem: PropostaItem = {
+            id: `temp-${Date.now()}`,
+            descricao: 'Novo Item',
+            quantidade: 1,
+            valor_unitario: 0
+        };
+        setItens([...itens, newItem]);
+    };
+
+    const handleDeleteItem = async (itemId: string) => {
+        // Mark for deletion or delete immediately?
+        // If it's saved in DB, we should delete it.
+        if (!itemId.startsWith('temp-')) {
+            await supabase.from('proposta_itens').delete().eq('id', itemId);
+        }
+        setItens(prev => prev.filter(i => i.id !== itemId));
+    };
+
+    const handleUpdateItem = (itemId: string, field: keyof PropostaItem, value: any) => {
+        setItens(prev => prev.map(item =>
+            item.id === itemId ? { ...item, [field]: value } : item
+        ));
+    };
+
+    const handleSaveItem = async (itemId: string) => {
+        const itemToSave = itens.find(item => item.id === itemId);
+        if (!itemToSave) return;
+
+        if (itemToSave.id.startsWith('temp-')) {
+            // Insert new item
+            const { data, error } = await supabase.from('proposta_itens').insert({
+                proposta_id: id,
+                descricao: itemToSave.descricao,
+                quantidade: itemToSave.quantidade || 1,
+                valor_unitario: Number(itemToSave.valor_unitario),
+            }).select().single();
+
+            if (error) {
+                alert('Erro ao adicionar item: ' + error.message);
+            } else if (data) {
+                setItens(prev => prev.map(item => item.id === itemId ? data : item));
+            }
+        } else {
+            // Update existing item
+            const { error } = await supabase.from('proposta_itens').update({
+                descricao: itemToSave.descricao,
+                quantidade: itemToSave.quantidade || 1,
+                valor_unitario: Number(itemToSave.valor_unitario),
+            }).eq('id', itemId);
+
+            if (error) {
+                alert('Erro ao atualizar item: ' + error.message);
+            }
+        }
+        setLastSaved(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 2500);
     };
 
     const deslocamentoVal = incluirDeslocamento ? parseAmount(custoDeslocamento) : 0;
@@ -242,7 +430,9 @@ const ProposalEditor = () => {
                         <div style="text-align: right;">
                             <div style="font-weight: bold; font-family: 'Space Grotesk'; font-size: 18px;">PROPOSTA</div>
                              <div style="font-size: 12px; color: #666; margin-top: 4px;">${dataEvento ? formatPreviewDate(dataEvento) : ''}</div>
+                             ${tipoServico ? `<div style="font-size: 12px; font-weight: 700; color: #e0067e; margin-top: 4px; text-transform: uppercase;">${tipoServico}</div>` : ''}
                         </div>
+                    </div>
                     </div>
 
                     <div class="client-info">
@@ -251,10 +441,26 @@ const ProposalEditor = () => {
                         <div class="proposal-meta">${titulo}</div>
                     </div>
 
-                    <div class="options-grid">
-                        ${itens.map(item => {
-            const val = typeof item.valor_unitario === 'string' ? parseAmount(item.valor_unitario as any) : item.valor_unitario;
+                    <div class="options-grid" style="${tipoServico === 'Outros' ? 'display: block;' : ''}">
+                        ${tipoServico === 'Árvore de Digitais' ? `
+                            <div style="margin-bottom: 20px; font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+                                Dimensões: <span style="font-weight: normal; font-family: 'Space Mono';">${dimensoes || 'Não especificado'}</span>
+                            </div>
+                        ` : ''}
+                        ${tipoServico === 'Outros' ? `
+                            <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; border: 1px solid #ddd; padding: 15px;">
+                                ${itens.map(item => `
+                                    <div style="display: flex; justify-content: space-between; font-size: 14px;">
+                                        <span style="font-weight: 600;">${item.descricao} <span style="font-size: 10px; color: #888;">x${item.quantidade}</span></span>
+                                        <span style="font-family: 'Space Mono';">R$ ${formatAmount(Number(item.valor_unitario) * item.quantidade)}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : itens.map(item => {
+            const val = Number(item.valor_unitario);
             const total = val + deslocamentoVal;
+
+            // For Fixed Options
             return `
                                 <div class="option-card">
                                     <div class="option-title">${item.descricao}</div>
@@ -276,6 +482,23 @@ const ProposalEditor = () => {
                             `;
         }).join('')}
                     </div>
+                    
+                     ${tipoServico === 'Outros' && incluirDeslocamento ? `
+                         <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; margin-top: 10px;">
+                            <span style="font-weight: 600; color: #666;">Deslocamento (${distanciaKm}km)</span>
+                            <span style="font-family: 'Space Mono';">R$ ${formatAmount(deslocamentoVal)}</span>
+                         </div>
+                         <div style="display: flex; justify-content: flex-end; margin-top: 20px; padding-top: 10px; border-top: 2px solid black;">
+                            <span style="font-weight: 800; font-size: 18px; margin-right: 20px;">TOTAL GERAL</span>
+                            <span style="font-family: 'Space Grotesk'; font-weight: 800; font-size: 18px;">R$ ${formatAmount(itens.reduce((s, i) => s + (Number(i.valor_unitario) * Number(i.quantidade)), 0) + deslocamentoVal)}</span>
+                         </div>
+                    ` : ''}
+                    ${tipoServico === 'Outros' && !incluirDeslocamento ? `
+                         <div style="display: flex; justify-content: flex-end; margin-top: 20px; padding-top: 10px; border-top: 2px solid black;">
+                            <span style="font-weight: 800; font-size: 18px; margin-right: 20px;">TOTAL GERAL</span>
+                            <span style="font-family: 'Space Grotesk'; font-weight: 800; font-size: 18px;">R$ ${formatAmount(itens.reduce((s, i) => s + (Number(i.valor_unitario) * Number(i.quantidade)), 0))}</span>
+                         </div>
+                    ` : ''}
 
                     ${observacoes ? `
                     <div class="obs-box">
@@ -330,7 +553,10 @@ const ProposalEditor = () => {
                     <button onClick={() => navigate('/proposals')} className="p-1.5 hover:bg-gray-100 border border-transparent hover:border-secondary transition-all">
                         <span className="material-symbols-outlined text-[20px]">arrow_back</span>
                     </button>
-                    <h2 className="text-2xl font-display font-black tracking-tighter text-secondary">ESTÚDIO DE PROPOSTAS</h2>
+                    <div className="flex flex-col">
+                        <h2 className="text-xl font-display font-black tracking-tighter text-secondary leading-none">ESTÚDIO DE PROPOSTAS</h2>
+                        <span className="text-[10px] font-mono font-bold uppercase text-primary tracking-widest">{tipoServico}</span>
+                    </div>
                 </div>
                 <div className="flex items-center gap-3">
                     {saving && <span className="animate-spin material-symbols-outlined text-primary text-[20px]">progress_activity</span>}
@@ -341,6 +567,24 @@ const ProposalEditor = () => {
                 {/* Controls Panel */}
                 <div className="w-full lg:w-[450px] xl:w-[500px] bg-background-light border-r-2 border-secondary flex flex-col h-full overflow-y-auto">
                     <div className="p-6 flex flex-col gap-8 pb-32">
+
+                        {/* Service Type Selector */}
+                        <div className="flex flex-col gap-1">
+                            <label className="text-xs font-bold uppercase tracking-wider text-secondary">Tipo de Serviço</label>
+                            <div className="relative">
+                                <select
+                                    className="w-full h-12 bg-surface border-2 border-secondary px-4 font-display font-bold text-sm focus:ring-0 focus:border-primary shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)] outline-none appearance-none rounded-none text-secondary uppercase"
+                                    value={tipoServico}
+                                    onChange={(e) => handleServiceChange(e.target.value)}
+                                >
+                                    {SERVICE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                </select>
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                                    <span className="material-symbols-outlined text-secondary">expand_more</span>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Proposal Title */}
                         <div className="flex flex-col gap-1">
                             <label className="text-xs font-bold uppercase tracking-wider text-secondary">Título da Proposta</label>
@@ -366,10 +610,11 @@ const ProposalEditor = () => {
                                         onChange={(e) => {
                                             const newLeadId = e.target.value;
                                             setLeadId(newLeadId);
-                                            const lead = leads.find(l => l.id === newLeadId);
-                                            if (lead && (titulo === 'Nova Proposta' || !titulo.trim())) {
-                                                setTitulo(`Proposta - ${lead.name}`);
-                                            }
+                                            // The useEffect will handle title update
+                                            // const lead = leads.find(l => l.id === newLeadId);
+                                            // if (lead && (titulo === 'Nova Proposta' || !titulo.trim())) {
+                                            //    setTitulo(`Proposta - ${lead.name}`);
+                                            // }
                                         }}
                                         onBlur={handleSave}
                                     >
@@ -393,42 +638,117 @@ const ProposalEditor = () => {
                             </div>
                         </div>
 
-                        {/* Plans (Fixed) */}
+                        {/* Plans / Services / Products */}
                         <div className="flex flex-col gap-4">
-                            <h3 className="text-lg font-display font-bold uppercase border-b-2 border-primary w-fit pb-1">Planos & Valores</h3>
+                            <h3 className="text-lg font-display font-bold uppercase border-b-2 border-primary w-fit pb-1">Valores</h3>
 
-                            <div className="flex flex-col gap-3">
-                                {itens.map((item, index) => {
-                                    const val = typeof item.valor_unitario === 'string' ? parseAmount(item.valor_unitario as any) : item.valor_unitario;
-                                    const totalPlan = val + deslocamentoVal;
+                            {/* Standard Fixed Plans OR Tree Options */}
+                            {(['Pintura dos Noivos', 'Aquarela dos Convidados', 'Identidade Visual', 'Árvore de Digitais'].includes(tipoServico)) && (
+                                <div className="flex flex-col gap-3">
+                                    {itens.map((item, index) => {
+                                        const val = typeof item.valor_unitario === 'string' ? parseAmount(item.valor_unitario as any) : item.valor_unitario;
+                                        const totalPlan = val + deslocamentoVal;
 
-                                    return (
-                                        <div key={item.id} className="bg-surface border-2 border-secondary p-4 shadow-[2px_2px_0px_0px_#1A1A1A]">
-                                            <div className="flex justify-between items-center mb-2">
-                                                <h4 className="font-display font-bold text-lg text-secondary uppercase">{item.descricao}</h4>
-                                                <div className="flex flex-col items-end">
-                                                    <span className="text-[10px] font-bold uppercase text-gray-400">Total com Deslocamento</span>
-                                                    <span className="font-mono font-bold text-primary">R$ {formatAmount(totalPlan)}</span>
+                                        return (
+                                            <div key={item.id} className="bg-surface border-2 border-secondary p-4 shadow-[2px_2px_0px_0px_#1A1A1A]">
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <h4 className="font-display font-bold text-lg text-secondary uppercase">{item.descricao}</h4>
+                                                    <div className="flex flex-col items-end">
+                                                        <span className="text-[10px] font-bold uppercase text-gray-400">Total com Deslocamento</span>
+                                                        <span className="font-mono font-bold text-primary">R$ {formatAmount(totalPlan)}</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex gap-4 items-end">
+                                                    <div className="flex-1">
+                                                        <label className="text-[10px] font-bold uppercase text-gray-400">Valor do Serviço (R$)</label>
+                                                        <input
+                                                            className="w-full border-b border-gray-300 focus:border-primary outline-none py-1 text-sm font-mono bg-transparent"
+                                                            type="text"
+                                                            value={item.valor_unitario}
+                                                            onChange={(e) => handleUpdateItemValue(index, e.target.value)}
+                                                            onBlur={() => handleBlurItemValue(index)}
+                                                            placeholder="0,00"
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
 
-                                            <div className="flex gap-4 items-end">
-                                                <div className="flex-1">
-                                                    <label className="text-[10px] font-bold uppercase text-gray-400">Valor do Plano (R$)</label>
+                            {/* Custom Items for 'Outros' */}
+                            {tipoServico === 'Outros' && (
+                                <div className="flex flex-col gap-3">
+                                    {itens.map((item) => (
+                                        <div key={item.id} className="bg-surface border-2 border-secondary p-3 shadow-[2px_2px_0px_0px_#1A1A1A]">
+                                            <div className="flex justify-between mb-2">
+                                                <label className="text-[10px] font-bold uppercase text-gray-400">Descrição</label>
+                                                <button onClick={() => handleDeleteItem(item.id)} className="text-accent-error hover:bg-red-50 rounded p-0.5">
+                                                    <span className="material-symbols-outlined text-[16px]">close</span>
+                                                </button>
+                                            </div>
+                                            <input
+                                                className="w-full border-b border-gray-300 focus:border-primary outline-none py-1 text-sm font-medium mb-3 bg-transparent"
+                                                type="text"
+                                                value={item.descricao}
+                                                onChange={(e) => handleUpdateItem(item.id, 'descricao', e.target.value)}
+                                                onBlur={() => handleSaveItem(item.id)}
+                                            />
+                                            <div className="flex gap-3">
+                                                <div className="w-20">
+                                                    <label className="text-[10px] font-bold uppercase text-gray-400">Qtd</label>
                                                     <input
                                                         className="w-full border-b border-gray-300 focus:border-primary outline-none py-1 text-sm font-mono bg-transparent"
+                                                        type="number"
+                                                        min="1"
+                                                        value={item.quantidade}
+                                                        onChange={(e) => handleUpdateItem(item.id, 'quantidade', parseInt(e.target.value) || 1)}
+                                                        onBlur={() => handleSaveItem(item.id)}
+                                                    />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <label className="text-[10px] font-bold uppercase text-gray-400">Valor (R$)</label>
+                                                    <input
+                                                        className="w-full border-b border-gray-300 focus:border-primary outline-none py-1 text-sm font-mono bg-transparent text-right"
                                                         type="text"
                                                         value={item.valor_unitario}
-                                                        onChange={(e) => handleUpdateItemValue(index, e.target.value)}
-                                                        onBlur={() => handleBlurItemValue(index)}
-                                                        placeholder="0,00"
+                                                        onChange={(e) => handleUpdateItem(item.id, 'valor_unitario', e.target.value)}
+                                                        onBlur={() => {
+                                                            const parsed = typeof item.valor_unitario === 'string' ? parseAmount(item.valor_unitario as any) : item.valor_unitario;
+                                                            handleUpdateItem(item.id, 'valor_unitario', parsed);
+                                                            handleSaveItem(item.id);
+                                                        }}
                                                     />
                                                 </div>
                                             </div>
                                         </div>
-                                    );
-                                })}
-                            </div>
+                                    ))}
+                                    <button
+                                        onClick={handleAddItem}
+                                        className="w-full py-2 border-2 border-dashed border-gray-400 text-gray-500 font-bold text-sm uppercase hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2 rounded-none"
+                                    >
+                                        <span className="material-symbols-outlined text-sm">add</span>
+                                        Adicionar Item
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Tree Dimensions */}
+                            {tipoServico === 'Árvore de Digitais' && (
+                                <div className="bg-white border-2 border-secondary p-4 mt-2">
+                                    <label className="text-xs font-bold uppercase tracking-wider text-secondary mb-1 block">Dimensões da Tela</label>
+                                    <input
+                                        className="w-full border-b-2 border-gray-300 focus:border-primary outline-none py-2 text-sm font-mono bg-transparent"
+                                        placeholder="Ex: 50x70cm"
+                                        value={dimensoes}
+                                        onChange={(e) => setDimensoes(e.target.value)}
+                                        onBlur={handleSave}
+                                    />
+                                </div>
+                            )}
+
                         </div>
 
                         {/* Logistics */}
@@ -550,34 +870,52 @@ const ProposalEditor = () => {
 
                             {/* Items Table */}
                             {/* Options Preview */}
-                            <div className="grid grid-cols-2 gap-4 mb-8">
-                                {itens.map(item => {
-                                    const val = Number(item.valor_unitario);
-                                    const total = val + deslocamentoVal;
-                                    return (
-                                        <div key={item.id} className="border border-gray-200 p-4 rounded-sm">
-                                            <h4 className="font-display font-bold text-sm text-primary uppercase mb-3 border-b border-gray-100 pb-2">{item.descricao}</h4>
-
-                                            <div className="flex justify-between items-center text-xs mb-1">
-                                                <span className="text-gray-500">Valor</span>
-                                                <span className="font-mono">R$ {formatAmount(val)}</span>
-                                            </div>
-
-                                            {incluirDeslocamento && (
-                                                <div className="flex justify-between items-center text-xs mb-1">
-                                                    <span className="text-gray-500">Desloc.</span>
-                                                    <span className="font-mono">R$ {formatAmount(deslocamentoVal)}</span>
-                                                </div>
-                                            )}
-
-                                            <div className="flex justify-between items-center text-sm font-bold mt-3 border-t border-gray-100 pt-2">
-                                                <span>TOTAL</span>
-                                                <span className="font-mono text-primary">R$ {formatAmount(total)}</span>
-                                            </div>
+                            {/* Options Preview / List */}
+                            {tipoServico === 'Outros' ? (
+                                <div className="flex flex-col gap-2 mb-8 border border-secondary p-4 bg-gray-50">
+                                    {itens.map(item => (
+                                        <div key={item.id} className="flex justify-between items-center text-sm">
+                                            <span>{item.descricao} x{item.quantidade}</span>
+                                            <span className="font-mono">R$ {formatAmount(Number(item.valor_unitario) * item.quantidade)}</span>
                                         </div>
-                                    );
-                                })}
-                            </div>
+                                    ))}
+                                    <div className="border-t border-gray-300 mt-2 pt-2 flex justify-between font-bold">
+                                        <span>TOTAL</span>
+                                        <span>R$ {formatAmount(itens.reduce((s, i) => s + (Number(i.valor_unitario) * Number(i.quantidade)), 0) + (incluirDeslocamento ? parseAmount(custoDeslocamento) : 0))}</span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-2 gap-4 mb-8">
+                                    {itens.map(item => {
+                                        const val = Number(item.valor_unitario);
+                                        const total = val + deslocamentoVal;
+                                        return (
+                                            <div key={item.id} className="border border-gray-200 p-4 rounded-sm">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <h4 className="font-display font-bold text-sm text-primary uppercase leading-tight">{item.descricao}</h4>
+                                                </div>
+
+                                                <div className="flex justify-between items-center text-xs mb-1">
+                                                    <span className="text-gray-500">Valor</span>
+                                                    <span className="font-mono">R$ {formatAmount(val)}</span>
+                                                </div>
+
+                                                {incluirDeslocamento && (
+                                                    <div className="flex justify-between items-center text-xs mb-1">
+                                                        <span className="text-gray-500">Desloc.</span>
+                                                        <span className="font-mono">R$ {formatAmount(deslocamentoVal)}</span>
+                                                    </div>
+                                                )}
+
+                                                <div className="flex justify-between items-center text-sm font-bold mt-3 border-t border-gray-100 pt-2">
+                                                    <span>TOTAL</span>
+                                                    <span className="font-mono text-primary">R$ {formatAmount(total)}</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
 
                         <div>
