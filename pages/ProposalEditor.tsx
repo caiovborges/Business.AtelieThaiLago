@@ -130,7 +130,15 @@ const ProposalEditor = () => {
             }
 
             // Sort
-            currentItens.sort((a, b) => requiredItems.indexOf(a.descricao) - requiredItems.indexOf(b.descricao));
+            // Sort
+            currentItens = [...currentItens].sort((a, b) => {
+                const idxA = requiredItems.indexOf(a.descricao);
+                const idxB = requiredItems.indexOf(b.descricao);
+                // Items not in the list go to the end
+                const valA = idxA === -1 ? 999 : idxA;
+                const valB = idxB === -1 ? 999 : idxB;
+                return valA - valB;
+            });
         }
 
         setItens(currentItens);
@@ -205,7 +213,13 @@ const ProposalEditor = () => {
         if (refreshedItems) {
             let sorted = refreshedItems as PropostaItem[];
             if (sortOrder.length > 0) {
-                sorted.sort((a, b) => sortOrder.indexOf(a.descricao) - sortOrder.indexOf(b.descricao));
+                sorted.sort((a, b) => {
+                    const idxA = sortOrder.indexOf(a.descricao);
+                    const idxB = sortOrder.indexOf(b.descricao);
+                    const valA = idxA === -1 ? 999 : idxA;
+                    const valB = idxB === -1 ? 999 : idxB;
+                    return valA - valB;
+                });
             } else {
                 // For 'Outros', sort by created_at usually, or just keep as is
                 sorted.sort((a, b) => a.id.localeCompare(b.id)); // fallback
