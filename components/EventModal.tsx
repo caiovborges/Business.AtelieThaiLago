@@ -55,6 +55,8 @@ const STATUS_COLORS: Record<string, string> = {
     'Cancelado': 'bg-red-100 text-red-800 border-red-300',
 };
 
+const STATUS_OPTIONS = ['Confirmado', 'Concluído', 'Cancelado'];
+
 const EventModal = ({ isOpen, onClose, onSave, editingEvent }: EventModalProps) => {
     const { user } = useAuth();
     const [nome, setNome] = useState('');
@@ -175,7 +177,7 @@ const EventModal = ({ isOpen, onClose, onSave, editingEvent }: EventModalProps) 
             setClientId('');
             setDataEvento('');
             setServico('');
-            setStatus('Pendente');
+            setStatus('Confirmado');
             setLocal('');
             setObservacoes('');
             setSelectedEstadoId(null);
@@ -193,35 +195,35 @@ const EventModal = ({ isOpen, onClose, onSave, editingEvent }: EventModalProps) 
     const existingContratoUrl = editingEvent?.contrato_url;
 
     return (
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
             <div
-                class="relative w-full max-w-2xl bg-white border-2 border-secondary shadow-hard-hover max-h-[90vh] overflow-y-auto"
+                className="relative w-full max-w-2xl bg-white border-2 border-secondary shadow-hard-hover max-h-[90vh] overflow-y-auto"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div class="flex items-center justify-between px-6 py-4 border-b-2 border-secondary sticky top-0 bg-white z-10">
-                    <h2 class="font-display text-xl font-bold uppercase tracking-tight text-secondary">
+                <div className="flex items-center justify-between px-6 py-4 border-b-2 border-secondary sticky top-0 bg-white z-10">
+                    <h2 className="font-display text-xl font-bold uppercase tracking-tight text-secondary">
                         {isEditing ? 'Editar Evento' : 'Novo Evento'}
                     </h2>
-                    <button onClick={onClose} class="flex items-center justify-center h-8 w-8 hover:bg-gray-100 transition-colors">
-                        <span class="material-symbols-outlined">close</span>
+                    <button onClick={onClose} className="flex items-center justify-center h-8 w-8 hover:bg-gray-100 transition-colors">
+                        <span className="material-symbols-outlined">close</span>
                     </button>
                 </div>
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} class="p-6 space-y-4">
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     {error && (
-                        <div class="p-3 bg-accent-error/10 border border-accent-error text-accent-error text-sm font-medium flex items-center gap-2">
-                            <span class="material-symbols-outlined text-base">error</span>
+                        <div className="p-3 bg-accent-error/10 border border-accent-error text-accent-error text-sm font-medium flex items-center gap-2">
+                            <span className="material-symbols-outlined text-base">error</span>
                             {error}
                         </div>
                     )}
 
                     {/* Nome do Evento */}
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-secondary mb-1">Nome do Evento *</label>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-secondary mb-1">Nome do Evento *</label>
                         <input
-                            class="w-full bg-surface border-2 border-secondary p-3 text-sm placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none"
+                            className="w-full bg-surface border-2 border-secondary p-3 text-sm placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none"
                             type="text"
                             placeholder="Ex: Casamento Ana & Pedro"
                             value={nome}
@@ -232,11 +234,11 @@ const EventModal = ({ isOpen, onClose, onSave, editingEvent }: EventModalProps) 
                     </div>
 
                     {/* Cliente + Data */}
-                    <div class="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-secondary mb-1">Cliente Relacionado</label>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-secondary mb-1">Cliente Relacionado</label>
                             <select
-                                class="w-full bg-surface border-2 border-secondary p-3 text-sm focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none appearance-none"
+                                className="w-full bg-surface border-2 border-secondary p-3 text-sm focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none appearance-none"
                                 value={clientId}
                                 onChange={(e) => setClientId(e.target.value)}
                                 disabled={saving}
@@ -248,9 +250,9 @@ const EventModal = ({ isOpen, onClose, onSave, editingEvent }: EventModalProps) 
                             </select>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-secondary mb-1">Data do Evento</label>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-secondary mb-1">Data do Evento</label>
                             <input
-                                class="w-full bg-surface border-2 border-secondary p-3 text-sm focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none"
+                                className="w-full bg-surface border-2 border-secondary p-3 text-sm focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none"
                                 type="date"
                                 value={dataEvento}
                                 onChange={(e) => setDataEvento(e.target.value)}
@@ -260,11 +262,11 @@ const EventModal = ({ isOpen, onClose, onSave, editingEvent }: EventModalProps) 
                     </div>
 
                     {/* Serviço + Status */}
-                    <div class="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-secondary mb-1">Serviço</label>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-secondary mb-1">Serviço</label>
                             <select
-                                class="w-full bg-surface border-2 border-secondary p-3 text-sm focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none appearance-none"
+                                className="w-full bg-surface border-2 border-secondary p-3 text-sm focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none appearance-none"
                                 value={servico}
                                 onChange={(e) => setServico(e.target.value)}
                                 disabled={saving}
@@ -276,15 +278,15 @@ const EventModal = ({ isOpen, onClose, onSave, editingEvent }: EventModalProps) 
                             </select>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-secondary mb-1">Status</label>
-                            <div class="flex flex-wrap gap-2">
+                            <label className="block text-xs font-bold uppercase tracking-wider text-secondary mb-1">Status</label>
+                            <div className="flex flex-wrap gap-2">
                                 {STATUS_OPTIONS.map(s => (
                                     <button
                                         key={s}
                                         type="button"
                                         onClick={() => setStatus(s)}
                                         disabled={saving}
-                                        class={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider border transition-all ${status === s
+                                        className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider border transition-all ${status === s
                                             ? STATUS_COLORS[s] + ' border-2 shadow-hard-sm'
                                             : 'bg-white border-gray-200 text-gray-500 hover:border-secondary'
                                             }`}
@@ -297,17 +299,17 @@ const EventModal = ({ isOpen, onClose, onSave, editingEvent }: EventModalProps) 
                     </div>
 
                     {/* Localização */}
-                    <div class="space-y-3 p-4 bg-background-light border-2 border-secondary/20">
-                        <p class="text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-1">
-                            <span class="material-symbols-outlined text-base">location_on</span>
+                    <div className="space-y-3 p-4 bg-background-light border-2 border-secondary/20">
+                        <p className="text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-1">
+                            <span className="material-symbols-outlined text-base">location_on</span>
                             Localização
                         </p>
 
-                        <div class="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Estado</label>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Estado</label>
                                 <select
-                                    class="w-full bg-white border-2 border-secondary p-3 text-sm focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none appearance-none"
+                                    className="w-full bg-white border-2 border-secondary p-3 text-sm focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none appearance-none"
                                     value={selectedEstadoId ?? ''}
                                     onChange={(e) => {
                                         setSelectedEstadoId(e.target.value ? Number(e.target.value) : null);
@@ -323,9 +325,9 @@ const EventModal = ({ isOpen, onClose, onSave, editingEvent }: EventModalProps) 
                             </div>
 
                             <div>
-                                <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Cidade</label>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Cidade</label>
                                 <select
-                                    class="w-full bg-white border-2 border-secondary p-3 text-sm focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none appearance-none"
+                                    className="w-full bg-white border-2 border-secondary p-3 text-sm focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none appearance-none"
                                     value={selectedCidadeId ?? ''}
                                     onChange={(e) => setSelectedCidadeId(e.target.value ? Number(e.target.value) : null)}
                                     disabled={saving || !selectedEstadoId}
@@ -339,11 +341,11 @@ const EventModal = ({ isOpen, onClose, onSave, editingEvent }: EventModalProps) 
                         </div>
 
                         {selectedEstadoId && (
-                            <div class="flex gap-2 items-end">
-                                <div class="flex-1">
-                                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Adicionar Cidade</label>
+                            <div className="flex gap-2 items-end">
+                                <div className="flex-1">
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Adicionar Cidade</label>
                                     <input
-                                        class="w-full bg-white border-2 border-dashed border-secondary/40 p-2.5 text-sm placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none"
+                                        className="w-full bg-white border-2 border-dashed border-secondary/40 p-2.5 text-sm placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none"
                                         type="text"
                                         placeholder="Nome da cidade..."
                                         value={newCidadeNome}
@@ -356,12 +358,12 @@ const EventModal = ({ isOpen, onClose, onSave, editingEvent }: EventModalProps) 
                                     type="button"
                                     onClick={handleAddCidade}
                                     disabled={addingCidade || !newCidadeNome.trim() || saving}
-                                    class="h-[42px] px-3 border-2 border-secondary bg-primary text-white text-xs font-bold uppercase flex items-center gap-1 shadow-hard-sm hover:shadow-hard-hover hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="h-[42px] px-3 border-2 border-secondary bg-primary text-white text-xs font-bold uppercase flex items-center gap-1 shadow-hard-sm hover:shadow-hard-hover hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {addingCidade ? (
-                                        <span class="animate-spin material-symbols-outlined text-[16px]">progress_activity</span>
+                                        <span className="animate-spin material-symbols-outlined text-[16px]">progress_activity</span>
                                     ) : (
-                                        <span class="material-symbols-outlined text-[16px]">add</span>
+                                        <span className="material-symbols-outlined text-[16px]">add</span>
                                     )}
                                 </button>
                             </div>
@@ -369,9 +371,9 @@ const EventModal = ({ isOpen, onClose, onSave, editingEvent }: EventModalProps) 
 
                         {/* Local / Venue */}
                         <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Local / Espaço</label>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Local / Espaço</label>
                             <input
-                                class="w-full bg-white border-2 border-secondary p-3 text-sm placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none"
+                                className="w-full bg-white border-2 border-secondary p-3 text-sm placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none"
                                 type="text"
                                 placeholder="Ex: Espaço Singular, Fazenda Santa Maria..."
                                 value={local}
@@ -383,9 +385,9 @@ const EventModal = ({ isOpen, onClose, onSave, editingEvent }: EventModalProps) 
 
                     {/* Observações */}
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-secondary mb-1">Observações</label>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-secondary mb-1">Observações</label>
                         <textarea
-                            class="w-full bg-surface border-2 border-secondary p-3 text-sm placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none resize-none"
+                            className="w-full bg-surface border-2 border-secondary p-3 text-sm placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none resize-none"
                             rows={3}
                             placeholder="Detalhes adicionais sobre o evento..."
                             value={observacoes}
@@ -395,20 +397,20 @@ const EventModal = ({ isOpen, onClose, onSave, editingEvent }: EventModalProps) 
                     </div>
 
                     {/* Contrato / File Upload */}
-                    <div class="space-y-2 p-4 bg-background-light border-2 border-secondary/20">
-                        <p class="text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-1">
-                            <span class="material-symbols-outlined text-base">description</span>
+                    <div className="space-y-2 p-4 bg-background-light border-2 border-secondary/20">
+                        <p className="text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-1">
+                            <span className="material-symbols-outlined text-base">description</span>
                             Contrato
                         </p>
 
                         {existingContratoUrl && !contratoFile && (
-                            <div class="flex items-center gap-2 p-2 bg-white border border-secondary/40">
-                                <span class="material-symbols-outlined text-primary text-lg">attach_file</span>
+                            <div className="flex items-center gap-2 p-2 bg-white border border-secondary/40">
+                                <span className="material-symbols-outlined text-primary text-lg">attach_file</span>
                                 <a
                                     href={existingContratoUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    class="text-sm font-mono text-primary hover:underline truncate"
+                                    className="text-sm font-mono text-primary hover:underline truncate"
                                     onClick={(e) => e.stopPropagation()}
                                 >
                                     Contrato anexado
@@ -416,13 +418,13 @@ const EventModal = ({ isOpen, onClose, onSave, editingEvent }: EventModalProps) 
                             </div>
                         )}
 
-                        <label class={`flex items-center justify-center gap-2 p-3 border-2 border-dashed border-secondary/40 bg-white cursor-pointer hover:border-primary transition-colors ${saving ? 'opacity-60 pointer-events-none' : ''}`}>
-                            <span class="material-symbols-outlined text-gray-400">upload_file</span>
-                            <span class="text-sm text-gray-500">{contratoFile ? contratoFile.name : (existingContratoUrl ? 'Substituir contrato...' : 'Anexar contrato (PDF, imagem)...')}</span>
+                        <label className={`flex items-center justify-center gap-2 p-3 border-2 border-dashed border-secondary/40 bg-white cursor-pointer hover:border-primary transition-colors ${saving ? 'opacity-60 pointer-events-none' : ''}`}>
+                            <span className="material-symbols-outlined text-gray-400">upload_file</span>
+                            <span className="text-sm text-gray-500">{contratoFile ? contratoFile.name : (existingContratoUrl ? 'Substituir contrato...' : 'Anexar contrato (PDF, imagem)...')}</span>
                             <input
                                 type="file"
                                 accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                                class="sr-only"
+                                className="sr-only"
                                 onChange={(e) => setContratoFile(e.target.files?.[0] || null)}
                                 disabled={saving}
                             />
@@ -430,28 +432,28 @@ const EventModal = ({ isOpen, onClose, onSave, editingEvent }: EventModalProps) 
                     </div>
 
                     {/* Actions */}
-                    <div class="flex gap-3 pt-2">
+                    <div className="flex gap-3 pt-2">
                         <button
                             type="button"
                             onClick={onClose}
                             disabled={saving}
-                            class="flex-1 h-12 border-2 border-secondary bg-white font-display font-bold text-sm uppercase tracking-wider hover:bg-gray-50 transition-colors"
+                            className="flex-1 h-12 border-2 border-secondary bg-white font-display font-bold text-sm uppercase tracking-wider hover:bg-gray-50 transition-colors"
                         >
                             Cancelar
                         </button>
                         <button
                             type="submit"
                             disabled={saving}
-                            class={`flex-1 h-12 bg-primary text-white font-display font-bold text-sm uppercase tracking-wider border-2 border-secondary shadow-hard hover:shadow-hard-hover hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all flex items-center justify-center gap-2 ${saving ? 'opacity-70 cursor-not-allowed' : ''}`}
+                            className={`flex-1 h-12 bg-primary text-white font-display font-bold text-sm uppercase tracking-wider border-2 border-secondary shadow-hard hover:shadow-hard-hover hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all flex items-center justify-center gap-2 ${saving ? 'opacity-70 cursor-not-allowed' : ''}`}
                         >
                             {saving ? (
                                 <>
-                                    <span class="animate-spin material-symbols-outlined text-[18px]">progress_activity</span>
+                                    <span className="animate-spin material-symbols-outlined text-[18px]">progress_activity</span>
                                     Salvando...
                                 </>
                             ) : (
                                 <>
-                                    <span class="material-symbols-outlined text-[18px]">{isEditing ? 'check' : 'save'}</span>
+                                    <span className="material-symbols-outlined text-[18px]">{isEditing ? 'check' : 'save'}</span>
                                     {isEditing ? 'Atualizar' : 'Salvar'}
                                 </>
                             )}
