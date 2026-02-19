@@ -327,7 +327,7 @@ const LeadsBoard = () => {
                                                 </div>
                                             </td>
                                             <td className="p-4 text-sm text-gray-600 font-mono">
-                                                {lead.event_date ? new Date(lead.event_date).toLocaleDateString() : '-'}
+                                                {lead.event_date ? new Date(lead.event_date + 'T12:00:00').toLocaleDateString() : '-'}
                                             </td>
                                             <td className="p-4 pr-6 text-right">
                                                 <div className="flex justify-end gap-1">
@@ -420,7 +420,7 @@ const LeadsBoard = () => {
                                                     {lead.event_date && (
                                                         <div className="flex items-center gap-1.5">
                                                             <span className="material-symbols-outlined text-[14px] text-gray-400">event</span>
-                                                            {new Date(lead.event_date).toLocaleDateString()}
+                                                            {new Date(lead.event_date + 'T12:00:00').toLocaleDateString()}
                                                         </div>
                                                     )}
                                                     {lead.location && (
