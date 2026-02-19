@@ -39,7 +39,7 @@ const SERVICE_OPTIONS = [
 ];
 
 // Plans for specific services
-const PLAN_OPTIONS = ['Herança', 'Memorias', 'Lembranças', 'Encontros'];
+const PLAN_OPTIONS = ['Herança', 'Memorias', 'Encontros', 'Lembranças'];
 
 // Options for Tree service
 const TREE_OPTIONS = ['Com Moldura', 'Sem Moldura'];
