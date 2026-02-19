@@ -28,6 +28,7 @@ interface Proposta {
     leads?: { name: string } | null;
 }
 
+const PLAN_OPTIONS = ['Herança', 'Memorias', 'Lembranças', 'Encontros'];
 const STATUS_OPTIONS = ['Rascunho', 'Enviada', 'Aprovada', 'Recusada'];
 
 const ProposalEditor = () => {
@@ -74,7 +75,25 @@ const ProposalEditor = () => {
             setCustoDeslocamento(String(p.custo_deslocamento || ''));
             setObservacoes(p.observacoes || '');
         }
-        if (itensRes.data) setItens(itensRes.data as PropostaItem[]);
+
+        let currentItens = (itensRes.data || []) as PropostaItem[];
+
+        // Ensure all 4 plans exist
+        const missingPlans = PLAN_OPTIONS.filter(plan => !currentItens.some(i => i.descricao === plan));
+        if (missingPlans.length > 0) {
+            const newItems = missingPlans.map(plan => ({
+                id: `temp-${plan}`, // Temp ID until saved
+                descricao: plan,
+                quantidade: 1,
+                valor_unitario: 0
+            }));
+            currentItens = [...currentItens, ...newItems];
+        }
+
+        // Sort by predefined order
+        currentItens.sort((a, b) => PLAN_OPTIONS.indexOf(a.descricao) - PLAN_OPTIONS.indexOf(b.descricao));
+
+        setItens(currentItens);
         if (leadsRes.data) setLeads(leadsRes.data as Lead[]);
         setLoading(false);
     };
@@ -89,7 +108,9 @@ const ProposalEditor = () => {
     const handleSave = async () => {
         if (!id) return;
         setSaving(true);
-        const { error } = await supabase.from('propostas').update({
+
+        // 1. Save Proposal Details
+        const { error: propError } = await supabase.from('propostas').update({
             titulo,
             lead_id: leadId || null,
             data_evento: dataEvento || null,
@@ -101,50 +122,63 @@ const ProposalEditor = () => {
             updated_at: new Date().toISOString(),
         }).eq('id', id);
 
-        if (error) {
-            alert('Erro ao salvar: ' + error.message);
-        } else {
-            setLastSaved(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
-            setShowToast(true);
-            setTimeout(() => setShowToast(false), 2500);
+        if (propError) {
+            alert('Erro ao salvar proposta: ' + propError.message);
+            setSaving(false);
+            return;
         }
+
+        // 2. Save Items (Plans)
+        for (const item of itens) {
+            if (item.id.startsWith('temp-')) {
+                // Insert new
+                await supabase.from('proposta_itens').insert({
+                    proposta_id: id,
+                    descricao: item.descricao,
+                    quantidade: 1,
+                    valor_unitario: Number(item.valor_unitario),
+                });
+            } else {
+                // Update existing
+                await supabase.from('proposta_itens').update({
+                    valor_unitario: Number(item.valor_unitario),
+                }).eq('id', item.id);
+            }
+        }
+
+        // Refresh to get real IDs
+        const { data: refreshedItems } = await supabase.from('proposta_itens').select('*').eq('proposta_id', id);
+        if (refreshedItems) {
+            const sorted = (refreshedItems as PropostaItem[]).sort((a, b) => PLAN_OPTIONS.indexOf(a.descricao) - PLAN_OPTIONS.indexOf(b.descricao));
+            setItens(sorted);
+        }
+
+        setLastSaved(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 2500);
         setSaving(false);
     };
 
-    const handleAddItem = async () => {
-        if (!id) return;
-        const { data, error } = await supabase.from('proposta_itens').insert({
-            proposta_id: id,
-            descricao: 'Novo item',
-            quantidade: 1,
-            valor_unitario: 0,
-        }).select().single();
-        if (data) setItens(prev => [...prev, data as PropostaItem]);
-        if (error) alert('Erro: ' + error.message);
+    const handleUpdateItemValue = (index: number, val: string) => {
+        const newItens = [...itens];
+        newItens[index].valor_unitario = val as any; // Allow string temporarily for input
+        setItens(newItens);
     };
 
-    const handleUpdateItem = async (itemId: string, field: string, value: any) => {
-        setItens(prev => prev.map(i => i.id === itemId ? { ...i, [field]: value } : i));
+    const handleBlurItemValue = (index: number) => {
+        const newItens = [...itens];
+        const val = newItens[index].valor_unitario;
+        if (typeof val === 'string') {
+            newItens[index].valor_unitario = parseAmount(val);
+        }
+        setItens(newItens);
+        // Note: We don't auto-save on blur here to avoid too many requests, user should click Save
     };
 
-    const handleSaveItem = async (itemId: string) => {
-        const item = itens.find(i => i.id === itemId);
-        if (!item) return;
-        await supabase.from('proposta_itens').update({
-            descricao: item.descricao,
-            quantidade: Number(item.quantidade),
-            valor_unitario: typeof item.valor_unitario === 'string' ? parseAmount(item.valor_unitario as any) : item.valor_unitario,
-        }).eq('id', itemId);
-    };
-
-    const handleDeleteItem = async (itemId: string) => {
-        await supabase.from('proposta_itens').delete().eq('id', itemId);
-        setItens(prev => prev.filter(i => i.id !== itemId));
-    };
-
-    const subtotalItens = itens.reduce((s, i) => s + (Number(i.valor_unitario) * Number(i.quantidade)), 0);
     const deslocamentoVal = incluirDeslocamento ? parseAmount(custoDeslocamento) : 0;
-    const totalGeral = subtotalItens + deslocamentoVal;
+
+    // const subtotalItens = itens.reduce((s, i) => s + (Number(i.valor_unitario) * Number(i.quantidade)), 0);
+    // const totalGeral = subtotalItens + deslocamentoVal;
 
     const leadName = leads.find(l => l.id === leadId)?.name || '';
 
@@ -160,59 +194,101 @@ const ProposalEditor = () => {
 
     const handleExportPDF = () => {
         if (!previewRef.current) return;
-        const printContents = previewRef.current.innerHTML;
+
+        // Clone the preview node to modify it for print without affecting UI
+        const printContent = previewRef.current.cloneNode(true) as HTMLElement;
+
+        // Ensure all styles are computed or included
         const printWindow = window.open('', '_blank');
         if (!printWindow) return;
+
         printWindow.document.write(`
             <html>
             <head>
                 <title>${titulo || 'Proposta'}</title>
                 <link rel="preconnect" href="https://fonts.googleapis.com">
-                <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+                <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
                 <style>
                     * { margin: 0; padding: 0; box-sizing: border-box; }
-                    body { font-family: 'Inter', sans-serif; color: #1A1A1A; }
+                    body { font-family: 'Inter', sans-serif; color: #1A1A1A; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                     @page { size: A4; margin: 0; }
-                    .page { width: 210mm; min-height: 297mm; padding: 48px; display: flex; flex-direction: column; justify-content: space-between; }
-                    h1, h3, .font-display { font-family: 'Space Grotesk', sans-serif; }
-                    .font-mono { font-family: 'Space Mono', 'Courier New', monospace; }
-                    table { width: 100%; border-collapse: collapse; }
-                    th, td { padding: 12px 0; text-align: left; }
-                    .text-right { text-align: right; }
-                    .text-center { text-align: center; }
-                    .border-b { border-bottom: 1px solid #eee; }
-                    .border-b-2 { border-bottom: 2px solid #1A1A1A; }
-                    .text-primary { color: #e0067e; }
-                    .text-gray-400 { color: #9ca3af; }
-                    .text-gray-500 { color: #6b7280; }
-                    .text-gray-600 { color: #4b5563; }
-                    .font-bold { font-weight: 700; }
-                    .font-black { font-weight: 900; }
-                    .text-xs { font-size: 10px; }
-                    .text-sm { font-size: 14px; }
-                    .text-lg { font-size: 18px; }
-                    .text-xl { font-size: 20px; }
-                    .text-2xl { font-size: 24px; }
-                    .text-4xl { font-size: 36px; }
-                    .uppercase { text-transform: uppercase; }
-                    .tracking-tighter { letter-spacing: -0.05em; }
-                    .tracking-wider { letter-spacing: 0.05em; }
-                    .tracking-widest { letter-spacing: 0.1em; }
-                    .italic { font-style: italic; }
-                    .mb-1 { margin-bottom: 4px; } .mb-3 { margin-bottom: 12px; } .mb-4 { margin-bottom: 16px; } .mb-8 { margin-bottom: 32px; } .mb-12 { margin-bottom: 48px; }
-                    .mt-1 { margin-top: 4px; } .mt-8 { margin-top: 32px; }
-                    .py-2 { padding-top: 8px; padding-bottom: 8px; } .py-4 { padding-top: 16px; padding-bottom: 16px; }
-                    .pt-4 { padding-top: 16px; } .pb-6 { padding-bottom: 24px; }
-                    .flex { display: flex; } .flex-col { flex-direction: column; } .gap-1 { gap: 4px; }
-                    .justify-between { justify-content: space-between; } .justify-end { justify-content: flex-end; } .items-start { align-items: flex-start; } .items-center { align-items: center; }
-                    .w-1\\/2 { width: 50%; } .w-32 { width: 128px; }
-                    .h-px { height: 1px; } .bg-gray-300 { background: #d1d5db; } .text-gray-200 { color: #e5e7eb; }
-                    .border-t-2 { border-top: 2px solid #1A1A1A; }
-                    @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+                    .page { width: 210mm; min-height: 297mm; padding: 40px; display: flex; flex-direction: column; }
+                    .header { display: flex; justify-content: space-between; margin-bottom: 40px; border-bottom: 2px solid #1A1A1A; padding-bottom: 20px; }
+                    .logo-text { font-family: 'Space Grotesk', sans-serif; font-size: 32px; font-weight: 800; letter-spacing: -1px; text-transform: uppercase; }
+                    .sub-logo { font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 2px; color: #e0067e; text-transform: uppercase; margin-top: 4px; }
+                    
+                    .client-info { margin-bottom: 40px; }
+                    .client-name { font-family: 'Space Grotesk', sans-serif; font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+                    .proposal-meta { font-size: 14px; color: #666; font-family: 'Space Mono', monospace; }
+                    
+                    .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 40px; }
+                    .option-card { border: 1px solid #ddd; padding: 20px; break-inside: avoid; }
+                    .option-title { font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 700; color: #e0067e; text-transform: uppercase; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+                    .option-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
+                    .option-total { display: flex; justify-content: space-between; margin-top: 15px; padding-top: 15px; border-top: 2px solid #1A1A1A; font-weight: 700; font-size: 16px; font-family: 'Space Grotesk', sans-serif; }
+                    
+                    .footer { margin-top: auto; padding-top: 20px; border-top: 1px solid #eee; font-size: 10px; color: #888; text-align: center; }
+                    
+                    .obs-box { margin-top: 20px; background: #f9f9f9; padding: 15px; border-radius: 4px; font-size: 12px; color: #555; }
                 </style>
             </head>
             <body>
-                <div class="page">${printContents}</div>
+                <div class="page">
+                    <div class="header">
+                        <div>
+                            <div class="logo-text">Ateliê Thai Lago</div>
+                            <div class="sub-logo">Pinturas em Casamento</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-weight: bold; font-family: 'Space Grotesk'; font-size: 18px;">PROPOSTA</div>
+                             <div style="font-size: 12px; color: #666; margin-top: 4px;">${dataEvento ? formatPreviewDate(dataEvento) : ''}</div>
+                        </div>
+                    </div>
+
+                    <div class="client-info">
+                        <div style="font-size: 10px; text-transform: uppercase; color: #888; margin-bottom: 5px; font-weight: 600;">Preparado especialmente para</div>
+                        <div class="client-name">${leadName || 'Nome do Cliente'}</div>
+                        <div class="proposal-meta">${titulo}</div>
+                    </div>
+
+                    <div class="options-grid">
+                        ${itens.map(item => {
+            const val = typeof item.valor_unitario === 'string' ? parseAmount(item.valor_unitario as any) : item.valor_unitario;
+            const total = val + deslocamentoVal;
+            return `
+                                <div class="option-card">
+                                    <div class="option-title">${item.descricao}</div>
+                                    <div class="option-row">
+                                        <span style="color: #666;">Valor do Serviço</span>
+                                        <span>R$ ${formatAmount(val)}</span>
+                                    </div>
+                                    ${incluirDeslocamento ? `
+                                    <div class="option-row">
+                                        <span style="color: #666;">Deslocamento (${distanciaKm}km)</span>
+                                        <span>R$ ${formatAmount(deslocamentoVal)}</span>
+                                    </div>
+                                    ` : ''}
+                                    <div class="option-total">
+                                        <span>TOTAL</span>
+                                        <span>R$ ${formatAmount(total)}</span>
+                                    </div>
+                                </div>
+                            `;
+        }).join('')}
+                    </div>
+
+                    ${observacoes ? `
+                    <div class="obs-box">
+                        <strong>Observações:</strong><br>
+                        ${observacoes.replace(/\n/g, '<br>')}
+                    </div>
+                    ` : ''}
+
+                    <div class="footer">
+                        <p>Validade da proposta: 60 dias. | Reserva mediante sinal.</p>
+                        <p style="margin-top: 5px;">Ateliê Thai Lago | contato@ateliethai.com</p>
+                    </div>
+                </div>
             </body>
             </html>
         `);
@@ -317,60 +393,42 @@ const ProposalEditor = () => {
                             </div>
                         </div>
 
-                        {/* Services & Products */}
+                        {/* Plans (Fixed) */}
                         <div className="flex flex-col gap-4">
-                            <h3 className="text-lg font-display font-bold uppercase border-b-2 border-primary w-fit pb-1">Serviços & Produtos</h3>
-                            {itens.map((item) => (
-                                <div key={item.id} className="bg-surface border-2 border-secondary p-3 shadow-[2px_2px_0px_0px_#1A1A1A]">
-                                    <div className="flex justify-between mb-2">
-                                        <label className="text-[10px] font-bold uppercase text-gray-400">Descrição</label>
-                                        <button onClick={() => handleDeleteItem(item.id)} className="text-accent-error hover:bg-red-50 rounded p-0.5">
-                                            <span className="material-symbols-outlined text-[16px]">close</span>
-                                        </button>
-                                    </div>
-                                    <input
-                                        className="w-full border-b border-gray-300 focus:border-primary outline-none py-1 text-sm font-medium mb-3 bg-transparent"
-                                        type="text"
-                                        value={item.descricao}
-                                        onChange={(e) => handleUpdateItem(item.id, 'descricao', e.target.value)}
-                                        onBlur={() => handleSaveItem(item.id)}
-                                    />
-                                    <div className="flex gap-3">
-                                        <div className="w-20">
-                                            <label className="text-[10px] font-bold uppercase text-gray-400">Qtd</label>
-                                            <input
-                                                className="w-full border-b border-gray-300 focus:border-primary outline-none py-1 text-sm font-mono bg-transparent"
-                                                type="number"
-                                                min="1"
-                                                value={item.quantidade}
-                                                onChange={(e) => handleUpdateItem(item.id, 'quantidade', parseInt(e.target.value) || 1)}
-                                                onBlur={() => handleSaveItem(item.id)}
-                                            />
+                            <h3 className="text-lg font-display font-bold uppercase border-b-2 border-primary w-fit pb-1">Planos & Valores</h3>
+
+                            <div className="flex flex-col gap-3">
+                                {itens.map((item, index) => {
+                                    const val = typeof item.valor_unitario === 'string' ? parseAmount(item.valor_unitario as any) : item.valor_unitario;
+                                    const totalPlan = val + deslocamentoVal;
+
+                                    return (
+                                        <div key={item.id} className="bg-surface border-2 border-secondary p-4 shadow-[2px_2px_0px_0px_#1A1A1A]">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <h4 className="font-display font-bold text-lg text-secondary uppercase">{item.descricao}</h4>
+                                                <div className="flex flex-col items-end">
+                                                    <span className="text-[10px] font-bold uppercase text-gray-400">Total com Deslocamento</span>
+                                                    <span className="font-mono font-bold text-primary">R$ {formatAmount(totalPlan)}</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex gap-4 items-end">
+                                                <div className="flex-1">
+                                                    <label className="text-[10px] font-bold uppercase text-gray-400">Valor do Plano (R$)</label>
+                                                    <input
+                                                        className="w-full border-b border-gray-300 focus:border-primary outline-none py-1 text-sm font-mono bg-transparent"
+                                                        type="text"
+                                                        value={item.valor_unitario}
+                                                        onChange={(e) => handleUpdateItemValue(index, e.target.value)}
+                                                        onBlur={() => handleBlurItemValue(index)}
+                                                        placeholder="0,00"
+                                                    />
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="flex-1">
-                                            <label className="text-[10px] font-bold uppercase text-gray-400">Valor Unitário (R$)</label>
-                                            <input
-                                                className="w-full border-b border-gray-300 focus:border-primary outline-none py-1 text-sm font-mono bg-transparent text-right"
-                                                type="text"
-                                                value={item.valor_unitario}
-                                                onChange={(e) => handleUpdateItem(item.id, 'valor_unitario', e.target.value)}
-                                                onBlur={() => {
-                                                    const parsed = typeof item.valor_unitario === 'string' ? parseAmount(item.valor_unitario as any) : item.valor_unitario;
-                                                    handleUpdateItem(item.id, 'valor_unitario', parsed);
-                                                    handleSaveItem(item.id);
-                                                }}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                            <button
-                                onClick={handleAddItem}
-                                className="w-full py-2 border-2 border-dashed border-gray-400 text-gray-500 font-bold text-sm uppercase hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2 rounded-none"
-                            >
-                                <span className="material-symbols-outlined text-sm">add</span>
-                                Adicionar Item
-                            </button>
+                                    );
+                                })}
+                            </div>
                         </div>
 
                         {/* Logistics */}
@@ -491,53 +549,42 @@ const ProposalEditor = () => {
                             </div>
 
                             {/* Items Table */}
-                            {itens.length > 0 && (
-                                <table className="w-full mb-8">
-                                    <thead>
-                                        <tr className="border-b-2 border-black">
-                                            <th className="text-left py-2 font-mono text-xs uppercase font-bold w-1/2">Descrição</th>
-                                            <th className="text-center py-2 font-mono text-xs uppercase font-bold">Qtd</th>
-                                            <th className="text-right py-2 font-mono text-xs uppercase font-bold">Unitário</th>
-                                            <th className="text-right py-2 font-mono text-xs uppercase font-bold">Total</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="text-sm">
-                                        {itens.map(item => (
-                                            <tr key={item.id} className="border-b border-gray-100">
-                                                <td className="py-4 font-medium">{item.descricao}</td>
-                                                <td className="py-4 text-center font-mono text-gray-500">{item.quantidade}</td>
-                                                <td className="py-4 text-right font-mono text-gray-500">{formatAmount(Number(item.valor_unitario))}</td>
-                                                <td className="py-4 text-right font-mono font-bold">{formatAmount(Number(item.valor_unitario) * Number(item.quantidade))}</td>
-                                            </tr>
-                                        ))}
-                                        {incluirDeslocamento && deslocamentoVal > 0 && (
-                                            <tr className="border-b border-gray-100">
-                                                <td className="py-4 font-medium text-gray-600 italic">Deslocamento ({distanciaKm}km)</td>
-                                                <td className="py-4 text-center font-mono text-gray-500">1</td>
-                                                <td className="py-4 text-right font-mono text-gray-500">{formatAmount(deslocamentoVal)}</td>
-                                                <td className="py-4 text-right font-mono font-bold">{formatAmount(deslocamentoVal)}</td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            )}
+                            {/* Options Preview */}
+                            <div className="grid grid-cols-2 gap-4 mb-8">
+                                {itens.map(item => {
+                                    const val = Number(item.valor_unitario);
+                                    const total = val + deslocamentoVal;
+                                    return (
+                                        <div key={item.id} className="border border-gray-200 p-4 rounded-sm">
+                                            <h4 className="font-display font-bold text-sm text-primary uppercase mb-3 border-b border-gray-100 pb-2">{item.descricao}</h4>
+
+                                            <div className="flex justify-between items-center text-xs mb-1">
+                                                <span className="text-gray-500">Valor</span>
+                                                <span className="font-mono">R$ {formatAmount(val)}</span>
+                                            </div>
+
+                                            {incluirDeslocamento && (
+                                                <div className="flex justify-between items-center text-xs mb-1">
+                                                    <span className="text-gray-500">Desloc.</span>
+                                                    <span className="font-mono">R$ {formatAmount(deslocamentoVal)}</span>
+                                                </div>
+                                            )}
+
+                                            <div className="flex justify-between items-center text-sm font-bold mt-3 border-t border-gray-100 pt-2">
+                                                <span>TOTAL</span>
+                                                <span className="font-mono text-primary">R$ {formatAmount(total)}</span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
 
                         <div>
                             {/* Totals */}
-                            <div className="flex justify-end mb-12">
-                                <div className="w-1/2">
-                                    {incluirDeslocamento && deslocamentoVal > 0 && (
-                                        <div className="flex justify-between py-2 border-b border-gray-200">
-                                            <span className="text-xs font-bold uppercase text-gray-500">Subtotal Serviços</span>
-                                            <span className="font-mono text-sm">R$ {formatAmount(subtotalItens)}</span>
-                                        </div>
-                                    )}
-                                    <div className="flex justify-between py-4">
-                                        <span className="text-lg font-display font-bold text-secondary">Total Estimado</span>
-                                        <span className="text-2xl font-display font-black text-primary">R$ {formatAmount(totalGeral)}</span>
-                                    </div>
-                                </div>
+                            {/* Totals Section Removed - Showing Separate Options */}
+                            <div className="flex justify-center mb-8">
+                                <span className="text-xs font-mono text-gray-400 uppercase tracking-widest">Opções Disponíveis</span>
                             </div>
 
                             {/* Footer */}

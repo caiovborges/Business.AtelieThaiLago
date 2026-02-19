@@ -63,10 +63,10 @@ const ProposalStudio = () => {
       await fetchPropostas();
    };
 
-   const getTotal = (p: Proposta): number => {
-      const itensTotal = (p.proposta_itens || []).reduce((s, i) => s + (Number(i.valor_unitario) * Number(i.quantidade)), 0);
-      return itensTotal + (p.incluir_deslocamento ? Number(p.custo_deslocamento) : 0);
-   };
+   // const getTotal = (p: Proposta): number => {
+   //    const itensTotal = (p.proposta_itens || []).reduce((s, i) => s + (Number(i.valor_unitario) * Number(i.quantidade)), 0);
+   //    return itensTotal + (p.incluir_deslocamento ? Number(p.custo_deslocamento) : 0);
+   // };
 
    const filtered = propostas.filter(p => {
       if (filterStatus && p.status !== filterStatus) return false;
@@ -135,7 +135,6 @@ const ProposalStudio = () => {
                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {filtered.map(p => {
                      const ss = STATUS_STYLES[p.status] || STATUS_STYLES['Rascunho'];
-                     const total = getTotal(p);
                      const dateStr = p.data_evento
                         ? new Date(p.data_evento + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).replace('.', '')
                         : null;
@@ -168,8 +167,8 @@ const ProposalStudio = () => {
                            </div>
 
                            <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
-                              <span className="font-mono text-xl font-bold text-primary">
-                                 R$ {total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              <span className="font-mono text-sm font-bold text-gray-400 uppercase tracking-wider">
+                                 Ver Opções
                               </span>
                               <button
                                  onClick={(e) => handleDelete(p.id, e)}
