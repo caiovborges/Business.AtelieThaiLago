@@ -338,13 +338,15 @@ const LeadsBoard = () => {
                                                     >
                                                         <span className="material-symbols-outlined text-[20px]">edit</span>
                                                     </button>
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); handleConvertToClient(lead); }}
-                                                        className="p-2 hover:bg-green-50 text-gray-400 hover:text-green-600 rounded-full transition-colors"
-                                                        title="Virar Cliente / Reativar"
-                                                    >
-                                                        <span className="material-symbols-outlined text-[20px]">check_circle</span>
-                                                    </button>
+                                                    {viewMode === 'closed' && (
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleConvertToClient(lead); }}
+                                                            className="p-2 hover:bg-green-50 text-gray-400 hover:text-green-600 rounded-full transition-colors"
+                                                            title="Virar Cliente / Reativar"
+                                                        >
+                                                            <span className="material-symbols-outlined text-[20px]">check_circle</span>
+                                                        </button>
+                                                    )}
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleDeleteLead(lead.id); }}
                                                         className="p-2 hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-full transition-colors"
