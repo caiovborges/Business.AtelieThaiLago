@@ -13,6 +13,8 @@ const STATUS_COLORS: Record<string, string> = {
     'Perdido': 'border-gray-400 bg-gray-50',
 };
 
+const ACTIVE_STAGES = ['Novo Lead', 'Proposta Enviada', 'Em Negociação'];
+
 const LeadsBoard = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
@@ -21,6 +23,7 @@ const LeadsBoard = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [sortOption, setSortOption] = useState<string>('created_at_desc'); // Default sort
+    const [viewMode, setViewMode] = useState<'funnel' | 'lost' | 'closed'>('funnel');
 
     // Modal State
     const [modalOpen, setModalOpen] = useState(false);
@@ -100,11 +103,33 @@ const LeadsBoard = () => {
             return;
         }
 
-        // 2. Update Lead Status? Or Delete? Lets keep history but maybe mark as converted?
-        // User asked to "passar informações". Usually we keep the lead as 'Fechado' or specific 'Convertido'.
-        // Let's just notify for now.
+        // 2. Update Lead Status
+        const { error: updateError } = await supabase
+            .from('leads')
+            .update({ status: 'Fechado' })
+            .eq('id', lead.id);
+
+        if (updateError) {
+            console.error('Error updating status:', updateError);
+        }
+
         alert(`Cliente ${lead.name} criado com sucesso!`);
-        navigate('/clients');
+        fetchLeads(); // Refresh to remove from board
+    };
+
+    const handleMarkAsLost = async (lead: EditingLead) => {
+        if (!window.confirm(`Marcar ${lead.name} como Perdido?`)) return;
+
+        const { error } = await supabase
+            .from('leads')
+            .update({ status: 'Perdido' })
+            .eq('id', lead.id);
+
+        if (error) {
+            alert('Erro ao atualizar status');
+        } else {
+            fetchLeads();
+        }
     };
 
     const handleDragStart = (e: React.DragEvent, leadId: string) => {
@@ -139,41 +164,42 @@ const LeadsBoard = () => {
 
     // Filter logic
     const filteredLeads = leads
-        .filter(l =>
-            l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (l.email || '').toLowerCase().includes(searchTerm.toLowerCase())
-        )
+        .filter(l => {
+            const matchesSearch = l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (l.email || '').toLowerCase().includes(searchTerm.toLowerCase());
+
+            if (!matchesSearch) return false;
+
+            if (viewMode === 'funnel') {
+                return ACTIVE_STAGES.includes(l.status);
+            } else if (viewMode === 'lost') {
+                return l.status === 'Perdido';
+            } else { // closed
+                return l.status === 'Fechado';
+            }
+        })
         .sort((a, b) => {
             if (sortOption === 'created_at_desc') {
                 return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
             }
             if (sortOption === 'event_date_desc') {
-                // Event dates: Future first? Or just simple date desc?
-                // User asked "mais recentes em cima".
-                // Usually "Recent" for events means "Soonest" or "Newest created"?
-                // Let's assume User means "Latest date" (furthest in future) on top? Or "Most recent past"?
-                // Actually "mais recentes" for *Future* events usually means "Soonest to happen".
-                // But context of "date of event" usually implies chronological order.
-                // Let's stick to standard date sorting:
-                // Descending: Newest/Future-est first.
-                // Ascending: Oldest/Soonest first.
-
                 const dateA = a.event_date ? new Date(a.event_date).getTime() : 0;
                 const dateB = b.event_date ? new Date(b.event_date).getTime() : 0;
                 return dateB - dateA;
             }
             if (sortOption === 'event_date_asc') {
-                // For Ascending (Soonest first), we want non-empty dates first?
-                // Or maybe put empty dates at the end.
-                const dateA = a.event_date ? new Date(a.event_date).getTime() : 9999999999999; // Far future if null
+                const dateA = a.event_date ? new Date(a.event_date).getTime() : 9999999999999;
                 const dateB = b.event_date ? new Date(b.event_date).getTime() : 9999999999999;
                 return dateA - dateB;
             }
             return 0;
         });
 
-    // Group by status
-    const leadsByStatus = PIPELINE_STAGES.reduce((acc, stage) => {
+    // Group by status (Dynamic based on viewMode)
+    const stagesToShow = viewMode === 'funnel' ? ACTIVE_STAGES : (viewMode === 'lost' ? ['Perdido'] : ['Fechado']);
+
+    // Quick helper to group
+    const leadsByStatus = stagesToShow.reduce((acc, stage) => {
         acc[stage] = filteredLeads.filter(l => l.status === stage);
         return acc;
     }, {} as Record<string, EditingLead[]>);
@@ -198,132 +224,245 @@ const LeadsBoard = () => {
                     </button>
                 </div>
 
-                {/* Controls */}
-                <div className="flex gap-4 items-center">
-                    {/* Search */}
-                    <div className="relative flex-1 max-w-md">
-                        <span className="absolute inset-y-0 left-3 flex items-center material-symbols-outlined text-gray-400">search</span>
-                        <input
-                            className="w-full pl-10 pr-4 py-2 border-2 border-secondary rounded-sm font-mono text-sm focus:border-primary outline-none focus:shadow-hard-sm transition-all"
-                            placeholder="Buscar lead por nome ou email..."
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                        />
+                {/* Filters Row */}
+                <div className="flex justify-between items-center bg-secondary/5 p-3 rounded-lg border border-secondary/10">
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setViewMode('funnel')}
+                            className={`px-4 py-2 rounded-sm font-bold text-sm uppercase transition-all flex items-center gap-2 ${viewMode === 'funnel' ? 'bg-secondary text-white shadow-md' : 'bg-white text-secondary hover:bg-secondary/10'}`}
+                        >
+                            <span className="material-symbols-outlined text-[18px]">view_column</span>
+                            Funil Ativo
+                        </button>
+                        <button
+                            onClick={() => setViewMode('lost')}
+                            className={`px-4 py-2 rounded-sm font-bold text-sm uppercase transition-all flex items-center gap-2 ${viewMode === 'lost' ? 'bg-gray-600 text-white shadow-md' : 'bg-white text-gray-500 hover:bg-gray-100'}`}
+                        >
+                            <span className="material-symbols-outlined text-[18px]">list</span>
+                            Perdidos
+                        </button>
+                        <button
+                            onClick={() => setViewMode('closed')}
+                            className={`px-4 py-2 rounded-sm font-bold text-sm uppercase transition-all flex items-center gap-2 ${viewMode === 'closed' ? 'bg-green-600 text-white shadow-md' : 'bg-white text-green-600 hover:bg-green-50'}`}
+                        >
+                            <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                            Fechados
+                        </button>
                     </div>
 
-                    {/* Sort */}
-                    <div className="relative">
-                        <select
-                            value={sortOption}
-                            onChange={(e) => setSortOption(e.target.value)}
-                            className="appearance-none pl-4 pr-10 py-2 border-2 border-secondary rounded-sm font-mono text-sm bg-white focus:border-primary outline-none focus:shadow-hard-sm transition-all cursor-pointer"
-                        >
-                            <option value="created_at_desc">Criado em (Recentes)</option>
-                            <option value="event_date_asc">Data do Evento (Próximos)</option>
-                            <option value="event_date_desc">Data do Evento (Distantes)</option>
-                        </select>
-                        <span className="absolute inset-y-0 right-3 flex items-center pointer-events-none material-symbols-outlined text-gray-500 text-sm">
-                            sort
-                        </span>
+                    {/* Controls */}
+                    <div className="flex gap-4 items-center">
+                        {/* Search */}
+                        <div className="relative flex-1 max-w-md">
+                            <span className="absolute inset-y-0 left-3 flex items-center material-symbols-outlined text-gray-400">search</span>
+                            <input
+                                className="w-full pl-10 pr-4 py-2 border-2 border-secondary rounded-sm font-mono text-sm focus:border-primary outline-none focus:shadow-hard-sm transition-all"
+                                placeholder="Buscar lead por nome ou email..."
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+
+                        {/* Sort */}
+                        <div className="relative">
+                            <select
+                                value={sortOption}
+                                onChange={(e) => setSortOption(e.target.value)}
+                                className="appearance-none pl-4 pr-10 py-2 border-2 border-secondary rounded-sm font-mono text-sm bg-white focus:border-primary outline-none focus:shadow-hard-sm transition-all cursor-pointer"
+                            >
+                                <option value="created_at_desc">Criado em (Recentes)</option>
+                                <option value="event_date_asc">Data do Evento (Próximos)</option>
+                                <option value="event_date_desc">Data do Evento (Distantes)</option>
+                            </select>
+                            <span className="absolute inset-y-0 right-3 flex items-center pointer-events-none material-symbols-outlined text-gray-500 text-sm">
+                                sort
+                            </span>
+                        </div>
                     </div>
                 </div>
             </header>
 
-            {/* Kanban Board */}
-            <div className="flex-1 overflow-x-auto overflow-y-hidden p-8 z-10 w-full">
-                <div className="flex gap-6 h-full w-max">
-                    {PIPELINE_STAGES.map(stage => (
-                        <div
-                            key={stage}
-                            className="w-80 flex flex-col h-full bg-white/50 border-2 border-secondary/20 rounded-sm"
-                            onDragOver={handleDragOver}
-                            onDrop={(e) => handleDrop(e, stage)}
-                        >
-                            {/* Column Header */}
-                            <div className={`p-4 border-b-2 border-secondary/10 font-display font-bold uppercase tracking-wider flex justify-between items-center ${STATUS_COLORS[stage] || 'bg-gray-100'}`}>
-                                <span>{stage}</span>
-                                <span className="bg-white/50 px-2 py-0.5 rounded text-xs border border-secondary/20">
-                                    {leadsByStatus[stage]?.length || 0}
-                                </span>
-                            </div>
-
-                            {/* Cards Container */}
-                            <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
-                                {leadsByStatus[stage]?.map(lead => (
-                                    <div
-                                        key={lead.id}
-                                        draggable
-                                        onDragStart={(e) => handleDragStart(e, lead.id)}
-                                        className="bg-white border-2 border-secondary p-4 shadow-sm hover:shadow-hard-sm transition-all cursor-pointer group relative active:cursor-grabbing"
-                                        onClick={() => { setEditingLead(lead); setModalOpen(true); }}
-                                    >
-                                        <div className="flex justify-between items-start mb-2">
-                                            <h4 className="font-bold text-secondary font-display text-lg">{lead.name}</h4>
-                                            {lead.source && (
-                                                <span className="text-[10px] uppercase font-mono text-gray-400 border border-gray-200 px-1 rounded">
-                                                    {lead.source}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="flex flex-wrap gap-1 mt-2">
-                                            {leadsWithProposals.has(lead.id) && (
-                                                <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-bold uppercase tracking-wider border border-purple-200 rounded-sm">
-                                                    Proposta Gerada
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        {lead.partner_name && (
-                                            <div className="flex items-center gap-1 text-xs text-gray-500 mb-2 font-mono">
-                                                <span className="material-symbols-outlined text-[14px]">favorite</span>
-                                                {lead.partner_name}
-                                            </div>
-                                        )}
-
-                                        <div className="space-y-1">
-                                            {lead.event_date && (
-                                                <div className="flex items-center gap-2 text-xs text-gray-600">
-                                                    <span className="material-symbols-outlined text-[14px]">event</span>
-                                                    {new Date(lead.event_date).toLocaleDateString()}
+            {/* Content Area */}
+            <div className="flex-1 overflow-hidden p-8 z-10 w-full relative">
+                {(viewMode === 'lost' || viewMode === 'closed') ? (
+                    /* LIST/TABLE VIEW (Combined logic for Lost and Closed) */
+                    <div className="bg-white/50 backdrop-blur-sm border-2 border-secondary/20 rounded-lg overflow-hidden h-full flex flex-col shadow-sm">
+                        <div className="overflow-y-auto flex-1 p-0">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-secondary/5 text-secondary font-display font-bold uppercase text-xs sticky top-0 z-10 border-b border-secondary/10">
+                                    <tr>
+                                        <th className="p-4 pl-6">Nome / Local</th>
+                                        <th className="p-4">Contato</th>
+                                        <th className="p-4">Data Evento</th>
+                                        <th className="p-4 text-right pr-6">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-secondary/10 bg-white/30">
+                                    {filteredLeads.length === 0 && (
+                                        <tr>
+                                            <td colSpan={4} className="p-12 text-center text-gray-400 font-mono italic">
+                                                {viewMode === 'lost' ? 'Nenhum lead marcado como perdido.' : 'Nenhum lead fechado encontrado.'}
+                                            </td>
+                                        </tr>
+                                    )}
+                                    {filteredLeads.map(lead => (
+                                        <tr key={lead.id} className="hover:bg-white/80 transition-colors group">
+                                            <td className="p-4 pl-6">
+                                                <div className="font-bold text-secondary text-base">{lead.name}</div>
+                                                {lead.location && (
+                                                    <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                                                        <span className="material-symbols-outlined text-[14px]">location_on</span>
+                                                        {lead.location}
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td className="p-4 text-sm font-mono text-gray-600">
+                                                <div className="flex items-center gap-2 mb-0.5">
+                                                    <span className="material-symbols-outlined text-[14px]">mail</span>
+                                                    {lead.email || '-'}
                                                 </div>
-                                            )}
-                                            {lead.location && (
-                                                <div className="flex items-center gap-2 text-xs text-gray-600">
-                                                    <span className="material-symbols-outlined text-[14px]">location_on</span>
-                                                    {lead.location}
+                                                <div className="flex items-center gap-2">
+                                                    <span className="material-symbols-outlined text-[14px]">call</span>
+                                                    {lead.phone || '-'}
                                                 </div>
-                                            )}
-                                        </div>
-
-
-
-
-                                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-white border border-secondary p-0.5 rounded shadow-sm">
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); handleDeleteLead(lead.id); }}
-                                                className="p-1 hover:bg-gray-100 text-accent-error rounded"
-                                                title="Excluir"
-                                            >
-                                                <span className="material-symbols-outlined text-[16px]">delete</span>
-                                            </button>
-                                        </div>
-
-                                        {/* Convert Button (visible if Fechado) */}
-                                        {stage === 'Fechado' && (
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); handleConvertToClient(lead); }}
-                                                className="w-full mt-3 py-1.5 bg-accent-success/10 text-accent-success border border-accent-success/30 font-bold text-xs uppercase hover:bg-accent-success hover:text-white transition-colors flex items-center justify-center gap-1"
-                                            >
-                                                <span className="material-symbols-outlined text-[14px]">person_add</span>
-                                                Virar Cliente
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
+                                            </td>
+                                            <td className="p-4 text-sm text-gray-600 font-mono">
+                                                {lead.event_date ? new Date(lead.event_date).toLocaleDateString() : '-'}
+                                            </td>
+                                            <td className="p-4 pr-6 text-right">
+                                                <div className="flex justify-end gap-1">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setEditingLead(lead); setModalOpen(true); }}
+                                                        className="p-2 hover:bg-blue-50 text-gray-400 hover:text-blue-600 rounded-full transition-colors"
+                                                        title="Editar Lead"
+                                                    >
+                                                        <span className="material-symbols-outlined text-[20px]">edit</span>
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleConvertToClient(lead); }}
+                                                        className="p-2 hover:bg-green-50 text-gray-400 hover:text-green-600 rounded-full transition-colors"
+                                                        title="Virar Cliente / Reativar"
+                                                    >
+                                                        <span className="material-symbols-outlined text-[20px]">check_circle</span>
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleDeleteLead(lead.id); }}
+                                                        className="p-2 hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-full transition-colors"
+                                                        title="Excluir Permanentemente"
+                                                    >
+                                                        <span className="material-symbols-outlined text-[20px]">delete</span>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
-                    ))}
-                </div>
+                    </div>
+                ) : (
+                    /* FUNNEL VIEW - KANBAN */
+                    <div className="flex gap-6 h-full w-max overflow-x-auto pb-4">
+                        {ACTIVE_STAGES.map(stage => (
+                            <div
+                                key={stage}
+                                className="w-80 flex flex-col h-full bg-white/50 border-2 border-secondary/20 rounded-sm"
+                                onDragOver={handleDragOver}
+                                onDrop={(e) => handleDrop(e, stage)}
+                            >
+                                {/* Column Header */}
+                                <div className={`p-4 border-b-2 border-secondary/10 font-display font-bold uppercase tracking-wider flex justify-between items-center ${STATUS_COLORS[stage] || 'bg-gray-100'}`}>
+                                    <span>{stage}</span>
+                                    <span className="bg-white/50 px-2 py-0.5 rounded text-xs border border-secondary/20 shadow-sm font-mono text-gray-600">
+                                        {leadsByStatus[stage]?.length || 0}
+                                    </span>
+                                </div>
+
+                                {/* Cards Container */}
+                                <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
+                                    {leadsByStatus[stage]?.map(lead => (
+                                        <div
+                                            key={lead.id}
+                                            draggable
+                                            onDragStart={(e) => handleDragStart(e, lead.id)}
+                                            className="bg-white border-2 border-secondary p-3 shadow-sm hover:shadow-hard-sm transition-all cursor-pointer group relative active:cursor-grabbing flex flex-col gap-3 rounded-sm"
+                                            onClick={() => { setEditingLead(lead); setModalOpen(true); }}
+                                        >
+                                            {/* Top: Info */}
+                                            <div>
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <h4 className="font-bold text-secondary font-display text-lg leading-tight">{lead.name}</h4>
+                                                    {lead.source && (
+                                                        <span className="text-[9px] uppercase font-mono text-gray-400 border border-gray-100 px-1 rounded bg-gray-50">
+                                                            {lead.source}
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                {lead.partner_name && (
+                                                    <div className="flex items-center gap-1 text-xs text-pink-500 mb-1 font-mono font-bold">
+                                                        <span className="material-symbols-outlined text-[12px]">favorite</span>
+                                                        {lead.partner_name}
+                                                    </div>
+                                                )}
+
+                                                <div className="flex flex-wrap gap-1 mb-2">
+                                                    {leadsWithProposals.has(lead.id) && (
+                                                        <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 text-[9px] font-bold uppercase tracking-wider border border-purple-100 rounded-sm">
+                                                            Proposta
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                <div className="space-y-1 text-xs text-gray-600 pb-1">
+                                                    {lead.event_date && (
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="material-symbols-outlined text-[14px] text-gray-400">event</span>
+                                                            {new Date(lead.event_date).toLocaleDateString()}
+                                                        </div>
+                                                    )}
+                                                    {lead.location && (
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="material-symbols-outlined text-[14px]">location_on</span>
+                                                            <span className="truncate max-w-[200px]">{lead.location}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Bottom: Actions (Always Visible) */}
+                                            <div className="flex gap-2 pt-2 border-t border-gray-100 group-hover:border-gray-200 transition-colors">
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleConvertToClient(lead); }}
+                                                    className="flex-1 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded-sm flex items-center justify-center gap-1 hover:bg-green-100 hover:shadow-sm transition-all"
+                                                    title="Fechar Venda (Virar Cliente)"
+                                                >
+                                                    <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                                                    <span className="text-[10px] font-bold uppercase tracking-wide">Fechar</span>
+                                                </button>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleMarkAsLost(lead); }}
+                                                    className="flex-1 py-1.5 bg-red-50 text-red-700 border border-red-200 rounded-sm flex items-center justify-center gap-1 hover:bg-red-100 hover:shadow-sm transition-all"
+                                                    title="Marcar como Perdido"
+                                                >
+                                                    <span className="material-symbols-outlined text-[16px]">cancel</span>
+                                                    <span className="text-[10px] font-bold uppercase tracking-wide">Perder</span>
+                                                </button>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleDeleteLead(lead.id); }}
+                                                    className="px-2 py-1.5 hover:bg-gray-100 text-gray-400 hover:text-red-600 rounded-sm transition-colors border border-transparent hover:border-gray-200"
+                                                    title="Excluir Permanentemente"
+                                                >
+                                                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             <AddLeadModal
