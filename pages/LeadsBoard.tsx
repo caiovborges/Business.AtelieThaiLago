@@ -34,7 +34,7 @@ const LeadsBoard = () => {
         setLoading(true);
         const { data, error } = await supabase
             .from('leads')
-            .select('*')
+            .select('*, lead_followups(id, scheduled_at, done, type)')
             .order('created_at', { ascending: false });
 
         const { data: propsData } = await supabase
@@ -55,6 +55,16 @@ const LeadsBoard = () => {
     useEffect(() => {
         fetchLeads();
     }, []);
+
+    const getNextFollowUp = (lead: EditingLead) => {
+        if (!lead.lead_followups || lead.lead_followups.length === 0) return null;
+
+        const pending = lead.lead_followups
+            .filter(f => !f.done)
+            .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+
+        return pending.length > 0 ? pending[0] : null;
+    };
 
     // Handlers
     const handleSaveLead = async (formData: LeadFormData) => {
@@ -429,6 +439,25 @@ const LeadsBoard = () => {
                                                             <span className="truncate max-w-[200px]">{lead.location}</span>
                                                         </div>
                                                     )}
+                                                    {/* Next Follow Up Display */}
+                                                    {(() => {
+                                                        const nextFu = getNextFollowUp(lead);
+                                                        if (nextFu) {
+                                                            const isLate = new Date(nextFu.scheduled_at) < new Date();
+                                                            return (
+                                                                <div className={`flex items-center gap-1.5 font-bold ${isLate ? 'text-red-500' : 'text-orange-500'}`}>
+                                                                    <span className="material-symbols-outlined text-[14px]">
+                                                                        {isLate ? 'warning' : 'schedule'}
+                                                                    </span>
+                                                                    <span>
+                                                                        {new Date(nextFu.scheduled_at).toLocaleDateString()}
+                                                                        {isLate && ' (Atrasado)'}
+                                                                    </span>
+                                                                </div>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    })()}
                                                 </div>
                                             </div>
 

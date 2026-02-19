@@ -33,6 +33,12 @@ export interface EditingLead extends LeadFormData {
     id: string;
     created_at: string;
     _estado_id?: number | null;
+    lead_followups?: {
+        id: string;
+        scheduled_at: string;
+        done: boolean;
+        type: string;
+    }[];
 }
 
 interface LeadModalProps {
