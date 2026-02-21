@@ -45,6 +45,13 @@ const PLAN_OPTIONS = ['Herança', 'Memorias', 'Encontros', 'Lembranças'];
 const TREE_OPTIONS = ['Com Moldura', 'Sem Moldura'];
 const STATUS_OPTIONS = ['Rascunho', 'Enviada', 'Aprovada', 'Recusada'];
 
+const CAR_OPTIONS = [
+    { label: 'Econômico (Ex: Onix 1.0) - ~13.5 km/l', value: '13.5' },
+    { label: 'Compacto (Ex: Kicks) - ~11.0 km/l', value: '11.0' },
+    { label: 'SUV Médio (Ex: Compass) - ~8.5 km/l', value: '8.5' },
+    { label: 'Personalizado', value: '10.0' }
+];
+
 const ProposalEditor = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -69,6 +76,12 @@ const ProposalEditor = () => {
     const [observacoes, setObservacoes] = useState('');
     const [tipoServico, setTipoServico] = useState('Pintura dos Noivos');
     const [dimensoes, setDimensoes] = useState('');
+
+    // Fuel Calculator State
+    const [mostrarCalculadora, setMostrarCalculadora] = useState(false);
+    const [precoCombustivel, setPrecoCombustivel] = useState('5.80');
+    const [consumoCarro, setConsumoCarro] = useState('13.5');
+    const [pedagio, setPedagio] = useState('0');
 
     // Update title when Lead or Service changes
     useEffect(() => {
@@ -151,6 +164,17 @@ const ProposalEditor = () => {
     const parseAmount = (val: string): number => {
         const cleaned = val.replace(/\./g, '').replace(',', '.');
         return parseFloat(cleaned) || 0;
+    };
+
+    const calcularCustoCombustivel = () => {
+        const km = parseFloat(String(distanciaKm).replace(',', '.')) || 0;
+        const preco = parseFloat(precoCombustivel.replace(',', '.')) || 0;
+        const kml = parseFloat(consumoCarro.replace(',', '.')) || 1;
+        const ped = parseFloat(pedagio.replace(',', '.')) || 0;
+
+        const custoLitros = (km / kml) * preco;
+        const total = (custoLitros + ped).toFixed(2);
+        setCustoDeslocamento(total);
     };
 
     const handleSave = async () => {
@@ -782,28 +806,94 @@ const ProposalEditor = () => {
                                 </label>
                             </div>
                             {incluirDeslocamento && (
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="text-xs font-bold uppercase tracking-wider text-secondary">Distância (km)</label>
-                                        <input
-                                            className="w-full h-10 bg-surface border-2 border-secondary px-3 font-mono text-sm focus:ring-0 focus:border-primary outline-none rounded-none"
-                                            type="number"
-                                            value={distanciaKm}
-                                            onChange={(e) => setDistanciaKm(e.target.value)}
-                                            onBlur={handleSave}
-                                        />
+                                <>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-xs font-bold uppercase tracking-wider text-secondary">Distância (km)</label>
+                                            <input
+                                                className="w-full h-10 bg-surface border-2 border-secondary px-3 font-mono text-sm focus:ring-0 focus:border-primary outline-none rounded-none"
+                                                type="number"
+                                                value={distanciaKm}
+                                                onChange={(e) => setDistanciaKm(e.target.value)}
+                                                onBlur={handleSave}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold uppercase tracking-wider text-secondary">Custo (R$)</label>
+                                            <input
+                                                className="w-full h-10 bg-surface border-2 border-secondary px-3 font-mono text-sm focus:ring-0 focus:border-primary outline-none rounded-none text-right"
+                                                type="text"
+                                                value={custoDeslocamento}
+                                                onChange={(e) => setCustoDeslocamento(e.target.value)}
+                                                onBlur={handleSave}
+                                            />
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="text-xs font-bold uppercase tracking-wider text-secondary">Custo (R$)</label>
-                                        <input
-                                            className="w-full h-10 bg-surface border-2 border-secondary px-3 font-mono text-sm focus:ring-0 focus:border-primary outline-none rounded-none text-right"
-                                            type="text"
-                                            value={custoDeslocamento}
-                                            onChange={(e) => setCustoDeslocamento(e.target.value)}
-                                            onBlur={handleSave}
-                                        />
-                                    </div>
-                                </div>
+                                    <button
+                                        onClick={() => setMostrarCalculadora(!mostrarCalculadora)}
+                                        className="text-[10px] font-bold uppercase text-primary self-start hover:underline mt-2 flex items-center gap-1"
+                                    >
+                                        <span className="material-symbols-outlined text-[14px]">local_gas_station</span>
+                                        {mostrarCalculadora ? 'Ocultar Calculadora' : 'Calcular Estimativa de Combustível'}
+                                    </button>
+
+                                    {mostrarCalculadora && (
+                                        <div className="bg-background-light border-2 border-primary p-4 mt-2 flex flex-col gap-3 relative transition-all">
+                                            <div className="absolute -top-3 left-4 bg-background-light px-1">
+                                                <span className="text-[9px] font-bold uppercase text-primary tracking-widest bg-[#ffebf5] py-0.5 px-2 rounded-full border border-primary">Estimativa Rápida</span>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
+                                                <div className="flex flex-col gap-1">
+                                                    <label className="text-[10px] font-bold uppercase text-gray-500">Consumo Médio (km/l)</label>
+                                                    <select
+                                                        className="w-full h-9 border-2 border-gray-200 px-2 font-mono text-xs outline-none focus:border-primary bg-white"
+                                                        value={consumoCarro}
+                                                        onChange={(e) => setConsumoCarro(e.target.value)}
+                                                    >
+                                                        {CAR_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                                                    </select>
+                                                    {['13.5', '11.0', '8.5'].indexOf(consumoCarro) === -1 && (
+                                                        <input
+                                                            type="text"
+                                                            className="w-full h-9 border-2 border-primary px-2 font-mono text-xs outline-none bg-[#ffebf5] mt-1"
+                                                            placeholder="Digite o km/l"
+                                                            value={consumoCarro}
+                                                            onChange={(e) => setConsumoCarro(e.target.value.replace(/[^0-9.]/g, ''))}
+                                                        />
+                                                    )}
+                                                </div>
+                                                <div className="flex flex-col gap-1">
+                                                    <label className="text-[10px] font-bold uppercase text-gray-500">Preço Combustível (R$)</label>
+                                                    <input
+                                                        className="w-full h-9 border-2 border-gray-200 px-2 font-mono text-xs outline-none focus:border-primary bg-white"
+                                                        type="text"
+                                                        value={precoCombustivel}
+                                                        onChange={(e) => setPrecoCombustivel(e.target.value)}
+                                                        placeholder="5.80"
+                                                    />
+                                                </div>
+                                                <div className="flex flex-col gap-1">
+                                                    <label className="text-[10px] font-bold uppercase text-gray-500">Pedágio/Extras (R$)</label>
+                                                    <input
+                                                        className="w-full h-9 border-2 border-gray-200 px-2 font-mono text-xs outline-none focus:border-primary bg-white"
+                                                        type="text"
+                                                        value={pedagio}
+                                                        onChange={(e) => setPedagio(e.target.value)}
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                                <div className="flex flex-col justify-end">
+                                                    <button
+                                                        onClick={calcularCustoCombustivel}
+                                                        className="h-9 px-3 w-full bg-primary text-white font-bold uppercase text-[10px] hover:bg-pink-600 transition-colors shadow-hard-dark hover:translate-y-[2px] hover:shadow-none border-2 border-secondary"
+                                                    >
+                                                        Calcular e Aplicar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
 

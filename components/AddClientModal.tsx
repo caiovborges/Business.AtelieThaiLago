@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 
 interface Estado {
@@ -166,35 +166,35 @@ const ClientModal = ({ isOpen, onClose, onSave, editingClient }: ClientModalProp
     };
 
     return (
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
             <div
-                class="relative w-full max-w-lg bg-white border-2 border-secondary shadow-hard-hover max-h-[90vh] overflow-y-auto"
+                className="relative w-full max-w-lg bg-white border-2 border-secondary shadow-hard-hover max-h-[90vh] overflow-y-auto"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div class="flex items-center justify-between px-6 py-4 border-b-2 border-secondary sticky top-0 bg-white z-10">
-                    <h2 class="font-display text-xl font-bold uppercase tracking-tight text-secondary">
+                <div className="flex items-center justify-between px-6 py-4 border-b-2 border-secondary sticky top-0 bg-white z-10">
+                    <h2 className="font-display text-xl font-bold uppercase tracking-tight text-secondary">
                         {isEditing ? 'Editar Cliente' : 'Novo Cliente'}
                     </h2>
-                    <button onClick={onClose} class="flex items-center justify-center h-8 w-8 hover:bg-gray-100 transition-colors">
-                        <span class="material-symbols-outlined">close</span>
+                    <button onClick={onClose} className="flex items-center justify-center h-8 w-8 hover:bg-gray-100 transition-colors">
+                        <span className="material-symbols-outlined">close</span>
                     </button>
                 </div>
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} class="p-6 space-y-4">
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     {error && (
-                        <div class="p-3 bg-accent-error/10 border border-accent-error text-accent-error text-sm font-medium flex items-center gap-2">
-                            <span class="material-symbols-outlined text-base">error</span>
+                        <div className="p-3 bg-accent-error/10 border border-accent-error text-accent-error text-sm font-medium flex items-center gap-2">
+                            <span className="material-symbols-outlined text-base">error</span>
                             {error}
                         </div>
                     )}
 
                     {/* Nome */}
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-secondary mb-1">Nome *</label>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-secondary mb-1">Nome *</label>
                         <input
-                            class="w-full bg-surface border-2 border-secondary p-3 text-sm placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none"
+                            className="w-full bg-surface border-2 border-secondary p-3 text-sm placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none"
                             type="text"
                             placeholder="Ex: Ana & Pedro"
                             value={name}
@@ -206,14 +206,14 @@ const ClientModal = ({ isOpen, onClose, onSave, editingClient }: ClientModalProp
 
                     {/* Interesse — Multi-select checkboxes */}
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-secondary mb-2">Interesse</label>
-                        <div class="space-y-2">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-secondary mb-2">Interesse</label>
+                        <div className="space-y-2">
                             {INTERESSES.map(item => {
                                 const checked = interesse.includes(item);
                                 return (
                                     <label
                                         key={item}
-                                        class={`flex items-center gap-3 p-3 border-2 cursor-pointer transition-all ${checked
+                                        className={`flex items-center gap-3 p-3 border-2 cursor-pointer transition-all ${checked
                                                 ? 'border-primary bg-primary/5 shadow-hard-sm'
                                                 : 'border-secondary/30 bg-surface hover:border-secondary/60'
                                             } ${saving ? 'opacity-60 pointer-events-none' : ''}`}
@@ -223,16 +223,16 @@ const ClientModal = ({ isOpen, onClose, onSave, editingClient }: ClientModalProp
                                             checked={checked}
                                             onChange={() => toggleInteresse(item)}
                                             disabled={saving}
-                                            class="sr-only"
+                                            className="sr-only"
                                         />
-                                        <span class={`flex items-center justify-center h-5 w-5 border-2 transition-colors ${checked ? 'bg-primary border-primary' : 'border-secondary bg-white'
+                                        <span className={`flex items-center justify-center h-5 w-5 border-2 transition-colors ${checked ? 'bg-primary border-primary' : 'border-secondary bg-white'
                                             }`}>
-                                            {checked && <span class="material-symbols-outlined text-white text-[14px]">check</span>}
+                                            {checked && <span className="material-symbols-outlined text-white text-[14px]">check</span>}
                                         </span>
-                                        <span class={`material-symbols-outlined text-lg ${checked ? 'text-primary' : 'text-gray-400'}`}>
+                                        <span className={`material-symbols-outlined text-lg ${checked ? 'text-primary' : 'text-gray-400'}`}>
                                             {INTERESSE_ICONS[item] || 'brush'}
                                         </span>
-                                        <span class={`text-sm font-medium ${checked ? 'text-primary' : 'text-secondary'}`}>{item}</span>
+                                        <span className={`text-sm font-medium ${checked ? 'text-primary' : 'text-secondary'}`}>{item}</span>
                                     </label>
                                 );
                             })}
@@ -240,17 +240,17 @@ const ClientModal = ({ isOpen, onClose, onSave, editingClient }: ClientModalProp
                     </div>
 
                     {/* Estado & Cidade */}
-                    <div class="space-y-3 p-4 bg-background-light border-2 border-secondary/20">
-                        <p class="text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-1">
-                            <span class="material-symbols-outlined text-base">location_on</span>
+                    <div className="space-y-3 p-4 bg-background-light border-2 border-secondary/20">
+                        <p className="text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-1">
+                            <span className="material-symbols-outlined text-base">location_on</span>
                             Localização
                         </p>
 
-                        <div class="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Estado</label>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Estado</label>
                                 <select
-                                    class="w-full bg-white border-2 border-secondary p-3 text-sm focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none appearance-none"
+                                    className="w-full bg-white border-2 border-secondary p-3 text-sm focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none appearance-none"
                                     value={selectedEstadoId ?? ''}
                                     onChange={(e) => {
                                         setSelectedEstadoId(e.target.value ? Number(e.target.value) : null);
@@ -266,9 +266,9 @@ const ClientModal = ({ isOpen, onClose, onSave, editingClient }: ClientModalProp
                             </div>
 
                             <div>
-                                <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Cidade</label>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Cidade</label>
                                 <select
-                                    class="w-full bg-white border-2 border-secondary p-3 text-sm focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none appearance-none"
+                                    className="w-full bg-white border-2 border-secondary p-3 text-sm focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none appearance-none"
                                     value={selectedCidadeId ?? ''}
                                     onChange={(e) => setSelectedCidadeId(e.target.value ? Number(e.target.value) : null)}
                                     disabled={saving || !selectedEstadoId}
@@ -282,11 +282,11 @@ const ClientModal = ({ isOpen, onClose, onSave, editingClient }: ClientModalProp
                         </div>
 
                         {selectedEstadoId && (
-                            <div class="flex gap-2 items-end">
-                                <div class="flex-1">
-                                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Adicionar Cidade</label>
+                            <div className="flex gap-2 items-end">
+                                <div className="flex-1">
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Adicionar Cidade</label>
                                     <input
-                                        class="w-full bg-white border-2 border-dashed border-secondary/40 p-2.5 text-sm placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none"
+                                        className="w-full bg-white border-2 border-dashed border-secondary/40 p-2.5 text-sm placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none"
                                         type="text"
                                         placeholder="Nome da cidade..."
                                         value={newCidadeNome}
@@ -299,12 +299,12 @@ const ClientModal = ({ isOpen, onClose, onSave, editingClient }: ClientModalProp
                                     type="button"
                                     onClick={handleAddCidade}
                                     disabled={addingCidade || !newCidadeNome.trim() || saving}
-                                    class="h-[42px] px-3 border-2 border-secondary bg-primary text-white text-xs font-bold uppercase flex items-center gap-1 shadow-hard-sm hover:shadow-hard-hover hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="h-[42px] px-3 border-2 border-secondary bg-primary text-white text-xs font-bold uppercase flex items-center gap-1 shadow-hard-sm hover:shadow-hard-hover hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {addingCidade ? (
-                                        <span class="animate-spin material-symbols-outlined text-[16px]">progress_activity</span>
+                                        <span className="animate-spin material-symbols-outlined text-[16px]">progress_activity</span>
                                     ) : (
-                                        <span class="material-symbols-outlined text-[16px]">add</span>
+                                        <span className="material-symbols-outlined text-[16px]">add</span>
                                     )}
                                 </button>
                             </div>
@@ -312,11 +312,11 @@ const ClientModal = ({ isOpen, onClose, onSave, editingClient }: ClientModalProp
                     </div>
 
                     {/* Contato */}
-                    <div class="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-secondary mb-1">Email</label>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-secondary mb-1">Email</label>
                             <input
-                                class="w-full bg-surface border-2 border-secondary p-3 text-sm placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none"
+                                className="w-full bg-surface border-2 border-secondary p-3 text-sm placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none"
                                 type="email"
                                 placeholder="email@exemplo.com"
                                 value={email}
@@ -325,9 +325,9 @@ const ClientModal = ({ isOpen, onClose, onSave, editingClient }: ClientModalProp
                             />
                         </div>
                         <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-secondary mb-1">Telefone</label>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-secondary mb-1">Telefone</label>
                             <input
-                                class="w-full bg-surface border-2 border-secondary p-3 text-sm placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none font-mono"
+                                className="w-full bg-surface border-2 border-secondary p-3 text-sm placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none font-mono"
                                 type="text"
                                 placeholder="(11) 99999-1234"
                                 value={phone}
@@ -338,9 +338,9 @@ const ClientModal = ({ isOpen, onClose, onSave, editingClient }: ClientModalProp
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-secondary mb-1">Instagram</label>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-secondary mb-1">Instagram</label>
                         <input
-                            class="w-full bg-surface border-2 border-secondary p-3 text-sm placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none"
+                            className="w-full bg-surface border-2 border-secondary p-3 text-sm placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none"
                             type="text"
                             placeholder="@usuario"
                             value={instagram}
@@ -350,28 +350,28 @@ const ClientModal = ({ isOpen, onClose, onSave, editingClient }: ClientModalProp
                     </div>
 
                     {/* Actions */}
-                    <div class="flex gap-3 pt-2">
+                    <div className="flex gap-3 pt-2">
                         <button
                             type="button"
                             onClick={onClose}
                             disabled={saving}
-                            class="flex-1 h-12 border-2 border-secondary bg-white font-display font-bold text-sm uppercase tracking-wider hover:bg-gray-50 transition-colors"
+                            className="flex-1 h-12 border-2 border-secondary bg-white font-display font-bold text-sm uppercase tracking-wider hover:bg-gray-50 transition-colors"
                         >
                             Cancelar
                         </button>
                         <button
                             type="submit"
                             disabled={saving}
-                            class={`flex-1 h-12 bg-primary text-white font-display font-bold text-sm uppercase tracking-wider border-2 border-secondary shadow-hard hover:shadow-hard-hover hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all flex items-center justify-center gap-2 ${saving ? 'opacity-70 cursor-not-allowed' : ''}`}
+                            className={`flex-1 h-12 bg-primary text-white font-display font-bold text-sm uppercase tracking-wider border-2 border-secondary shadow-hard hover:shadow-hard-hover hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all flex items-center justify-center gap-2 ${saving ? 'opacity-70 cursor-not-allowed' : ''}`}
                         >
                             {saving ? (
                                 <>
-                                    <span class="animate-spin material-symbols-outlined text-[18px]">progress_activity</span>
+                                    <span className="animate-spin material-symbols-outlined text-[18px]">progress_activity</span>
                                     Salvando...
                                 </>
                             ) : (
                                 <>
-                                    <span class="material-symbols-outlined text-[18px]">{isEditing ? 'check' : 'save'}</span>
+                                    <span className="material-symbols-outlined text-[18px]">{isEditing ? 'check' : 'save'}</span>
                                     {isEditing ? 'Atualizar' : 'Salvar'}
                                 </>
                             )}
