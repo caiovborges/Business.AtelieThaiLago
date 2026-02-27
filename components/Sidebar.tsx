@@ -42,8 +42,8 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
       {/* Sidebar Container */}
       <aside className={`
         fixed top-0 left-0 h-screen w-64 flex-col border-r-2 border-secondary bg-surface z-50 transition-transform duration-300 ease-in-out
-        lg:translate-x-0 lg:static lg:flex
-        ${isOpen ? 'translate-x-0 flex' : '-translate-x-full hidden lg:flex'}
+        lg:translate-x-0 lg:static flex
+        ${isOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="flex h-24 items-center gap-3 border-b-2 border-secondary px-6 justify-between lg:justify-start">
           <div className="flex items-center gap-3">

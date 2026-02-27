@@ -184,8 +184,8 @@ const ClientRegistry = () => {
             </div>
 
             {/* Toolbar */}
-            <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between mt-4">
-               <div className="relative group w-full md:max-w-md">
+            <div className="flex flex-col md:flex-row gap-4 items-stretch justify-between mt-4 w-full">
+               <div className="relative group w-full md:flex-1">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                      <span className="material-symbols-outlined text-gray-400 group-focus-within:text-primary transition-colors">search</span>
                   </div>
@@ -199,7 +199,7 @@ const ClientRegistry = () => {
                </div>
                <div className="flex flex-col md:flex-row gap-4">
                   {/* Filter button + dropdown — all inside ref */}
-                  <div className="relative" ref={filterRef}>
+                  <div className="relative w-full md:w-auto shrink-0" ref={filterRef}>
                      <button
                         onClick={() => setShowFilters(!showFilters)}
                         className={`w-full md:w-auto px-4 py-3 border-2 border-secondary bg-white hover:bg-gray-50 font-display font-medium text-sm uppercase tracking-wide flex items-center justify-center gap-2 shadow-hard-sm active:translate-y-[2px] active:shadow-none transition-all ${showFilters ? 'bg-gray-50 shadow-none translate-y-[2px]' : ''}`}
@@ -260,7 +260,7 @@ const ClientRegistry = () => {
                         </div>
                      )}
                   </div>
-                  <button onClick={handleNewClient} className="w-full md:w-auto px-6 py-3 border-2 border-secondary bg-primary text-white font-display font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-hard hover:shadow-hard-hover hover:-translate-y-0.5 active:translate-y-[2px] active:shadow-none transition-all">
+                  <button onClick={handleNewClient} className="w-full md:w-auto px-6 py-3 border-2 border-secondary bg-primary text-white font-display font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-hard hover:shadow-hard-hover hover:-translate-y-0.5 active:translate-y-[2px] active:shadow-none transition-all shrinks-0">
                      <span className="material-symbols-outlined text-lg">add</span>
                      Novo Cliente
                   </button>

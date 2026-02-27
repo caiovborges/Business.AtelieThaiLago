@@ -233,15 +233,15 @@ const LeadsBoard = () => {
             <div className="absolute inset-0 z-0 pointer-events-none bg-noise opacity-50 mix-blend-multiply"></div>
 
             {/* Header */}
-            <header className="relative z-20 px-8 py-6 flex flex-col gap-6 bg-white/50 border-b-2 border-secondary/10">
-                <div className="flex justify-between items-end">
+            <header className="relative z-20 px-4 md:px-8 py-4 md:py-6 flex flex-col gap-4 md:gap-6 bg-white/50 border-b-2 border-secondary/10">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
                     <div>
-                        <h2 className="font-display text-3xl font-bold text-secondary">Funil de Vendas</h2>
-                        <p className="font-body text-gray-600 mt-1">Gerencie seus leads desde o primeiro contato até o fechamento.</p>
+                        <h2 className="font-display text-2xl md:text-3xl font-bold text-secondary">Funil de Vendas</h2>
+                        <p className="font-body text-gray-600 mt-1 text-sm md:text-base">Gerencie seus leads desde o primeiro contato até o fechamento.</p>
                     </div>
                     <button
                         onClick={() => { setEditingLead(null); setModalOpen(true); }}
-                        className="px-6 py-3 bg-primary text-white font-display font-bold uppercase tracking-wider shadow-hard border-2 border-secondary hover:shadow-hard-hover hover:-translate-y-0.5 transition-all flex items-center gap-2"
+                        className="w-full sm:w-auto justify-center px-6 py-3 bg-primary text-white font-display font-bold uppercase tracking-wider shadow-hard border-2 border-secondary hover:shadow-hard-hover hover:-translate-y-0.5 transition-all flex items-center gap-2"
                     >
                         <span className="material-symbols-outlined">add</span>
                         Novo Lead
@@ -249,25 +249,25 @@ const LeadsBoard = () => {
                 </div>
 
                 {/* Filters Row */}
-                <div className="flex justify-between items-center bg-secondary/5 p-3 rounded-lg border border-secondary/10">
-                    <div className="flex gap-2">
+                <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-secondary/5 p-3 rounded-lg border border-secondary/10">
+                    <div className="flex gap-2 overflow-x-auto w-full xl:w-auto pb-2 xl:pb-0 hide-scrollbar shrink-0">
                         <button
                             onClick={() => setViewMode('funnel')}
-                            className={`px-4 py-2 rounded-sm font-bold text-sm uppercase transition-all flex items-center gap-2 ${viewMode === 'funnel' ? 'bg-secondary text-white shadow-md' : 'bg-white text-secondary hover:bg-secondary/10'}`}
+                            className={`shrink-0 px-4 py-2 rounded-sm font-bold text-sm uppercase transition-all flex items-center gap-2 ${viewMode === 'funnel' ? 'bg-secondary text-white shadow-md' : 'bg-white text-secondary hover:bg-secondary/10'}`}
                         >
                             <span className="material-symbols-outlined text-[18px]">view_column</span>
                             Funil Ativo
                         </button>
                         <button
                             onClick={() => setViewMode('lost')}
-                            className={`px-4 py-2 rounded-sm font-bold text-sm uppercase transition-all flex items-center gap-2 ${viewMode === 'lost' ? 'bg-gray-600 text-white shadow-md' : 'bg-white text-gray-500 hover:bg-gray-100'}`}
+                            className={`shrink-0 px-4 py-2 rounded-sm font-bold text-sm uppercase transition-all flex items-center gap-2 ${viewMode === 'lost' ? 'bg-gray-600 text-white shadow-md' : 'bg-white text-gray-500 hover:bg-gray-100'}`}
                         >
                             <span className="material-symbols-outlined text-[18px]">list</span>
                             Perdidos
                         </button>
                         <button
                             onClick={() => setViewMode('closed')}
-                            className={`px-4 py-2 rounded-sm font-bold text-sm uppercase transition-all flex items-center gap-2 ${viewMode === 'closed' ? 'bg-green-600 text-white shadow-md' : 'bg-white text-green-600 hover:bg-green-50'}`}
+                            className={`shrink-0 px-4 py-2 rounded-sm font-bold text-sm uppercase transition-all flex items-center gap-2 ${viewMode === 'closed' ? 'bg-green-600 text-white shadow-md' : 'bg-white text-green-600 hover:bg-green-50'}`}
                         >
                             <span className="material-symbols-outlined text-[18px]">check_circle</span>
                             Fechados
@@ -275,24 +275,24 @@ const LeadsBoard = () => {
                     </div>
 
                     {/* Controls */}
-                    <div className="flex gap-4 items-center">
+                    <div className="flex flex-col sm:flex-row gap-4 w-full xl:w-auto items-stretch sm:items-center">
                         {/* Search */}
-                        <div className="relative flex-1 max-w-md">
+                        <div className="relative flex-1 w-full sm:max-w-md">
                             <span className="absolute inset-y-0 left-3 flex items-center material-symbols-outlined text-gray-400">search</span>
                             <input
                                 className="w-full pl-10 pr-4 py-2 border-2 border-secondary rounded-sm font-mono text-sm focus:border-primary outline-none focus:shadow-hard-sm transition-all"
-                                placeholder="Buscar lead por nome ou email..."
+                                placeholder="Buscar lead..."
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
                             />
                         </div>
 
                         {/* Sort */}
-                        <div className="relative">
+                        <div className="relative w-full sm:w-auto shrink-0">
                             <select
                                 value={sortOption}
                                 onChange={(e) => setSortOption(e.target.value)}
-                                className="appearance-none pl-4 pr-10 py-2 border-2 border-secondary rounded-sm font-mono text-sm bg-white focus:border-primary outline-none focus:shadow-hard-sm transition-all cursor-pointer"
+                                className="w-full appearance-none pl-4 pr-10 py-2 border-2 border-secondary rounded-sm font-mono text-sm bg-white focus:border-primary outline-none focus:shadow-hard-sm transition-all cursor-pointer"
                             >
                                 <option value="created_at_desc">Criado em (Recentes)</option>
                                 <option value="event_date_asc">Data do Evento (Próximos)</option>
@@ -308,12 +308,12 @@ const LeadsBoard = () => {
             </header>
 
             {/* Content Area */}
-            <div className="flex-1 overflow-hidden p-8 z-10 w-full relative">
+            <div className="flex-1 overflow-hidden p-4 md:p-8 z-10 w-full relative">
                 {(viewMode === 'lost' || viewMode === 'closed') ? (
                     /* LIST/TABLE VIEW (Combined logic for Lost and Closed) */
                     <div className="bg-white/50 backdrop-blur-sm border-2 border-secondary/20 rounded-lg overflow-hidden h-full flex flex-col shadow-sm">
-                        <div className="overflow-y-auto flex-1 p-0">
-                            <table className="w-full text-left border-collapse">
+                        <div className="overflow-x-auto overflow-y-auto flex-1 p-0">
+                            <table className="w-full text-left border-collapse min-w-[600px]">
                                 <thead className="bg-secondary/5 text-secondary font-display font-bold uppercase text-xs sticky top-0 z-10 border-b border-secondary/10">
                                     <tr>
                                         <th className="p-4 pl-6">Nome / Local</th>
@@ -389,11 +389,11 @@ const LeadsBoard = () => {
                     </div>
                 ) : (
                     /* FUNNEL VIEW - KANBAN */
-                    <div className="flex gap-6 h-full w-max overflow-x-auto pb-4">
+                    <div className="flex gap-4 md:gap-6 h-full w-full overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar">
                         {ACTIVE_STAGES.map(stage => (
                             <div
                                 key={stage}
-                                className="w-80 flex flex-col h-full bg-white/50 border-2 border-secondary/20 rounded-sm"
+                                className="w-[85vw] sm:w-80 shrink-0 snap-center flex flex-col h-full bg-white/50 border-2 border-secondary/20 rounded-sm"
                                 onDragOver={handleDragOver}
                                 onDrop={(e) => handleDrop(e, stage)}
                             >

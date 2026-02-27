@@ -36,10 +36,10 @@ const ProtectedRoute = () => {
   }
 
   return (
-    <div className="flex min-h-screen w-full bg-background-light text-secondary">
+    <div className="flex min-h-screen w-full bg-background-light text-secondary overflow-x-hidden relative">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
-      <main className="flex-1 flex flex-col min-w-0 transition-all duration-300">
+      <main className="flex-1 flex flex-col min-w-0 transition-all duration-300 relative z-10">
         {/* Mobile Header */}
         <div className="lg:hidden flex items-center justify-between p-4 border-b-2 border-secondary bg-surface sticky top-0 z-30">
           <div className="flex items-center gap-3">

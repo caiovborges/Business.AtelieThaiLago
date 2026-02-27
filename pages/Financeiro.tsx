@@ -149,7 +149,7 @@ const Financeiro = () => {
             </header>
 
             {/* Summary Cards */}
-            <div className="px-8 pt-6 grid grid-cols-3 gap-4">
+            <div className="px-4 md:px-8 pt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-white border-2 border-secondary p-4 shadow-hard-sm">
                     <p className="font-mono text-xs text-gray-400 uppercase tracking-wider">Receita</p>
                     <p className="font-mono text-2xl font-bold text-accent-success mt-1">
@@ -228,112 +228,114 @@ const Financeiro = () => {
             </div>
 
             {/* Table */}
-            <div className="flex-1 overflow-auto px-8 pt-4 pb-8">
-                {loading ? (
-                    <div className="flex items-center justify-center py-20">
-                        <span className="animate-spin material-symbols-outlined text-4xl text-primary">progress_activity</span>
-                    </div>
-                ) : sorted.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-                        <span className="material-symbols-outlined text-5xl mb-3">receipt_long</span>
-                        <p className="font-display text-lg font-bold text-secondary">Nenhuma transação encontrada</p>
-                        <p className="font-mono text-sm mt-1">Tente ajustar os filtros ou adicione novas transações.</p>
-                    </div>
-                ) : (
-                    <table className="w-full border-collapse">
-                        <thead className="sticky top-0 z-10 bg-background-light">
-                            <tr className="border-b-2 border-secondary">
-                                <th className="text-left p-3 cursor-pointer select-none" onClick={() => toggleSort('data')}>
-                                    <span className="font-display text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center">
-                                        Data <SortIcon field="data" />
-                                    </span>
-                                </th>
-                                <th className="text-left p-3 cursor-pointer select-none" onClick={() => toggleSort('tipo')}>
-                                    <span className="font-display text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center">
-                                        Tipo <SortIcon field="tipo" />
-                                    </span>
-                                </th>
-                                <th className="text-left p-3 cursor-pointer select-none" onClick={() => toggleSort('descricao')}>
-                                    <span className="font-display text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center">
-                                        Descrição <SortIcon field="descricao" />
-                                    </span>
-                                </th>
-                                <th className="text-left p-3 cursor-pointer select-none" onClick={() => toggleSort('categoria')}>
-                                    <span className="font-display text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center">
-                                        Categoria <SortIcon field="categoria" />
-                                    </span>
-                                </th>
-                                <th className="text-left p-3 cursor-pointer select-none" onClick={() => toggleSort('evento')}>
-                                    <span className="font-display text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center">
-                                        Evento <SortIcon field="evento" />
-                                    </span>
-                                </th>
-                                <th className="text-right p-3 cursor-pointer select-none" onClick={() => toggleSort('valor')}>
-                                    <span className="font-display text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center justify-end">
-                                        Valor <SortIcon field="valor" />
-                                    </span>
-                                </th>
-                                <th className="w-12 p-3"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {sorted.map((t, i) => (
-                                <tr
-                                    key={t.id}
-                                    className={`group border-b border-gray-200 hover:bg-white transition-colors ${i % 2 === 0 ? 'bg-gray-50/50' : ''}`}
-                                >
-                                    <td className="p-3 font-mono text-sm text-gray-600 whitespace-nowrap">{formatDate(t.data)}</td>
-                                    <td className="p-3">
-                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold uppercase tracking-wider border rounded-sm ${t.tipo === 'receita'
-                                            ? 'bg-accent-success/10 text-accent-success border-accent-success/30'
-                                            : 'bg-accent-error/10 text-accent-error border-accent-error/30'
-                                            }`}>
-                                            <span className="material-symbols-outlined text-[12px]">{t.tipo === 'receita' ? 'arrow_upward' : 'arrow_downward'}</span>
-                                            {t.tipo === 'receita' ? 'Entrada' : 'Saída'}
+            <div className="flex-1 px-4 md:px-8 pt-4 pb-8 overflow-y-auto">
+                <div className="w-full relative shadow-sm border border-secondary/10 overflow-x-auto">
+                    {loading ? (
+                        <div className="flex items-center justify-center py-20">
+                            <span className="animate-spin material-symbols-outlined text-4xl text-primary">progress_activity</span>
+                        </div>
+                    ) : sorted.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-20 text-gray-400 min-w-full">
+                            <span className="material-symbols-outlined text-5xl mb-3">receipt_long</span>
+                            <p className="font-display text-lg font-bold text-secondary">Nenhuma transação encontrada</p>
+                            <p className="font-mono text-sm mt-1">Tente ajustar os filtros ou adicione novas transações.</p>
+                        </div>
+                    ) : (
+                        <table className="w-full border-collapse min-w-[800px]">
+                            <thead className="sticky top-0 z-10 bg-background-light">
+                                <tr className="border-b-2 border-secondary">
+                                    <th className="text-left p-3 cursor-pointer select-none" onClick={() => toggleSort('data')}>
+                                        <span className="font-display text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center">
+                                            Data <SortIcon field="data" />
                                         </span>
-                                    </td>
-                                    <td className="p-3 font-body text-sm text-secondary max-w-[200px] truncate">{t.descricao}</td>
-                                    <td className="p-3">
-                                        {t.categorias ? (
-                                            <span className="font-mono text-xs text-gray-500 flex items-center gap-1">
-                                                <span className="material-symbols-outlined text-[12px]">label</span>
-                                                {t.categorias.nome}
-                                            </span>
-                                        ) : (
-                                            <span className="text-xs text-gray-300">&mdash;</span>
-                                        )}
-                                    </td>
-                                    <td className="p-3">
-                                        {t.eventos ? (
-                                            <button
-                                                onClick={() => navigate(`/events/${t.evento_id}`)}
-                                                className="font-mono text-xs text-primary hover:underline flex items-center gap-1"
-                                            >
-                                                <span className="material-symbols-outlined text-[12px]">event</span>
-                                                {t.eventos.nome}
-                                            </button>
-                                        ) : (
-                                            <span className="font-mono text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">GERAL</span>
-                                        )}
-                                    </td>
-                                    <td className="p-3 text-right">
-                                        <span className={`font-mono font-bold text-sm ${t.tipo === 'receita' ? 'text-accent-success' : 'text-accent-error'}`}>
-                                            {t.tipo === 'receita' ? '+' : '-'} R$ {Number(t.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                    </th>
+                                    <th className="text-left p-3 cursor-pointer select-none" onClick={() => toggleSort('tipo')}>
+                                        <span className="font-display text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center">
+                                            Tipo <SortIcon field="tipo" />
                                         </span>
-                                    </td>
-                                    <td className="p-3">
-                                        <button
-                                            onClick={() => handleDelete(t.id)}
-                                            className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-accent-error transition-all"
-                                        >
-                                            <span className="material-symbols-outlined text-[18px]">delete</span>
-                                        </button>
-                                    </td>
+                                    </th>
+                                    <th className="text-left p-3 cursor-pointer select-none" onClick={() => toggleSort('descricao')}>
+                                        <span className="font-display text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center">
+                                            Descrição <SortIcon field="descricao" />
+                                        </span>
+                                    </th>
+                                    <th className="text-left p-3 cursor-pointer select-none" onClick={() => toggleSort('categoria')}>
+                                        <span className="font-display text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center">
+                                            Categoria <SortIcon field="categoria" />
+                                        </span>
+                                    </th>
+                                    <th className="text-left p-3 cursor-pointer select-none" onClick={() => toggleSort('evento')}>
+                                        <span className="font-display text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center">
+                                            Evento <SortIcon field="evento" />
+                                        </span>
+                                    </th>
+                                    <th className="text-right p-3 cursor-pointer select-none" onClick={() => toggleSort('valor')}>
+                                        <span className="font-display text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center justify-end">
+                                            Valor <SortIcon field="valor" />
+                                        </span>
+                                    </th>
+                                    <th className="w-12 p-3"></th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
+                            </thead>
+                            <tbody>
+                                {sorted.map((t, i) => (
+                                    <tr
+                                        key={t.id}
+                                        className={`group border-b border-gray-200 hover:bg-white transition-colors ${i % 2 === 0 ? 'bg-gray-50/50' : ''}`}
+                                    >
+                                        <td className="p-3 font-mono text-sm text-gray-600 whitespace-nowrap">{formatDate(t.data)}</td>
+                                        <td className="p-3">
+                                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold uppercase tracking-wider border rounded-sm ${t.tipo === 'receita'
+                                                ? 'bg-accent-success/10 text-accent-success border-accent-success/30'
+                                                : 'bg-accent-error/10 text-accent-error border-accent-error/30'
+                                                }`}>
+                                                <span className="material-symbols-outlined text-[12px]">{t.tipo === 'receita' ? 'arrow_upward' : 'arrow_downward'}</span>
+                                                {t.tipo === 'receita' ? 'Entrada' : 'Saída'}
+                                            </span>
+                                        </td>
+                                        <td className="p-3 font-body text-sm text-secondary max-w-[200px] truncate">{t.descricao}</td>
+                                        <td className="p-3">
+                                            {t.categorias ? (
+                                                <span className="font-mono text-xs text-gray-500 flex items-center gap-1">
+                                                    <span className="material-symbols-outlined text-[12px]">label</span>
+                                                    {t.categorias.nome}
+                                                </span>
+                                            ) : (
+                                                <span className="text-xs text-gray-300">&mdash;</span>
+                                            )}
+                                        </td>
+                                        <td className="p-3">
+                                            {t.eventos ? (
+                                                <button
+                                                    onClick={() => navigate(`/events/${t.evento_id}`)}
+                                                    className="font-mono text-xs text-primary hover:underline flex items-center gap-1"
+                                                >
+                                                    <span className="material-symbols-outlined text-[12px]">event</span>
+                                                    {t.eventos.nome}
+                                                </button>
+                                            ) : (
+                                                <span className="font-mono text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">GERAL</span>
+                                            )}
+                                        </td>
+                                        <td className="p-3 text-right">
+                                            <span className={`font-mono font-bold text-sm ${t.tipo === 'receita' ? 'text-accent-success' : 'text-accent-error'}`}>
+                                                {t.tipo === 'receita' ? '+' : '-'} R$ {Number(t.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                            </span>
+                                        </td>
+                                        <td className="p-3">
+                                            <button
+                                                onClick={() => handleDelete(t.id)}
+                                                className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-accent-error transition-all"
+                                            >
+                                                <span className="material-symbols-outlined text-[18px]">delete</span>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
             </div>
         </div>
     );

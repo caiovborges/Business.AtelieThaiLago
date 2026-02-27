@@ -191,16 +191,16 @@ const AddLeadModal = ({ isOpen, onClose, onSave, editingLead }: LeadModalProps) 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="bg-white w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl border-2 border-secondary flex flex-col">
-                <header className="bg-secondary p-6 flex justify-between items-center sticky top-0 z-10">
-                    <h2 className="text-2xl font-display font-bold text-white uppercase tracking-wider">
+                <header className="bg-secondary p-4 md:p-6 flex justify-between items-center sticky top-0 z-10">
+                    <h2 className="text-xl md:text-2xl font-display font-bold text-white uppercase tracking-wider">
                         {editingLead ? 'Editar Lead' : 'Novo Lead'}
                     </h2>
                     <button onClick={onClose} className="text-white hover:text-primary transition-colors">
-                        <span className="material-symbols-outlined text-3xl">close</span>
+                        <span className="material-symbols-outlined text-2xl md:text-3xl">close</span>
                     </button>
                 </header>
 
-                <form onSubmit={handleSubmit} className="p-8 flex flex-col gap-8">
+                <form onSubmit={handleSubmit} className="p-4 md:p-8 flex flex-col gap-6 md:gap-8">
                     {error && (
                         <div className="bg-red-50 border-l-4 border-accent-error p-4 text-accent-error font-bold text-sm">
                             {error}
@@ -224,7 +224,7 @@ const AddLeadModal = ({ isOpen, onClose, onSave, editingLead }: LeadModalProps) 
                                     value={partnerName} onChange={e => setPartnerName(e.target.value)} placeholder="Ex: Ana & João" />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Email</label>
                                     <input className="w-full bg-surface border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none"
@@ -243,7 +243,7 @@ const AddLeadModal = ({ isOpen, onClose, onSave, editingLead }: LeadModalProps) 
                                     value={phone} onChange={e => setPhone(e.target.value)} placeholder="(00) 00000-0000" />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Estado</label>
                                     <select className="w-full bg-surface border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none appearance-none"
@@ -296,7 +296,7 @@ const AddLeadModal = ({ isOpen, onClose, onSave, editingLead }: LeadModalProps) 
                         <div className="flex flex-col gap-6">
                             <h3 className="text-lg font-display font-bold uppercase border-b-2 border-primary w-fit pb-1 text-secondary">Detalhes da Oportunidade</h3>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Status do Pipeline</label>
                                     <select className="w-full bg-surface border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none appearance-none font-bold"
@@ -351,13 +351,13 @@ const AddLeadModal = ({ isOpen, onClose, onSave, editingLead }: LeadModalProps) 
                         </div>
                     </div>
 
-                    <div className="flex justify-end gap-4 mt-4 pt-4 border-t border-gray-200">
+                    <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 mt-4 pt-4 border-t border-gray-200">
                         <button type="button" onClick={onClose}
-                            className="px-6 py-3 font-display font-bold uppercase tracking-wider text-secondary hover:bg-gray-100 transition-colors">
+                            className="w-full sm:w-auto px-6 py-3 font-display font-bold uppercase tracking-wider text-secondary hover:bg-gray-100 transition-colors border-2 border-transparent hover:border-secondary">
                             Cancelar
                         </button>
                         <button type="submit" disabled={saving}
-                            className="px-8 py-3 bg-primary text-white font-display font-bold uppercase tracking-wider shadow-hard border-2 border-secondary hover:shadow-hard-hover hover:-translate-y-0.5 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                            className="w-full sm:w-auto px-8 py-3 bg-primary text-white font-display font-bold uppercase tracking-wider shadow-hard border-2 border-secondary hover:shadow-hard-hover hover:-translate-y-0.5 transition-all flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                             {saving ? <span className="animate-spin material-symbols-outlined text-[20px]">progress_activity</span> : <span className="material-symbols-outlined text-[20px]">save</span>}
                             Salvar Lead
                         </button>
@@ -365,7 +365,7 @@ const AddLeadModal = ({ isOpen, onClose, onSave, editingLead }: LeadModalProps) 
                 </form>
 
                 {editingLead?.id && (
-                    <div className="px-8 pb-8">
+                    <div className="px-4 md:px-8 pb-4 md:pb-8">
                         <LeadFollowups leadId={editingLead.id} />
                     </div>
                 )}

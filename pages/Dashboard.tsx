@@ -535,7 +535,7 @@ const Dashboard = () => {
                     {catFiltered.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                   </select>
                 </div>
-                <div className="md:col-span-1 lg:col-span-3">
+                <div className="md:col-span-1 lg:col-span-3 w-full">
                   <label className="block text-xs font-mono text-gray-500 mb-1">Valor</label>
                   <input className={`w-full bg-white border-2 border-gray-200 text-sm font-mono p-2 text-right focus:ring-0 outline-none transition-colors rounded-none placeholder:text-gray-300 font-medium ${addTipo === 'receita' ? 'focus:border-accent-success text-accent-success' : 'focus:border-accent-error text-accent-error'}`}
                     placeholder="0,00" type="text" value={addAmount} onChange={(e) => setAddAmount(e.target.value)} disabled={adding}
@@ -543,7 +543,7 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              <button onClick={handleAddTransaction} disabled={adding || !addDesc.trim() || !addAmount}
+              <button type="button" onClick={handleAddTransaction} disabled={adding || !addDesc.trim() || !addAmount}
                 className={`w-full mt-4 flex items-center justify-center gap-2 bg-white border-2 font-display font-bold text-sm py-3 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${addTipo === 'receita'
                   ? 'border-accent-success text-accent-success hover:bg-accent-success hover:text-white shadow-[2px_2px_0px_0px_#00C896] hover:shadow-none hover:translate-x-[1px] hover:translate-y-[1px]'
                   : 'border-accent-error text-accent-error hover:bg-accent-error hover:text-white shadow-[2px_2px_0px_0px_#FF4D4D] hover:shadow-none hover:translate-x-[1px] hover:translate-y-[1px]'

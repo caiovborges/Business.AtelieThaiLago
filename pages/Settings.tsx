@@ -101,144 +101,140 @@ const Settings = () => {
 
             <div className="p-8 max-w-4xl mx-auto">
                 {/* User Management Section */}
-                <section>
-                    <div className="flex items-center gap-3 mb-6">
-                        <span className="material-symbols-outlined text-primary">group</span>
-                        <h2 className="font-display text-lg font-bold text-secondary uppercase tracking-wider">Usuários</h2>
-                        <span className="font-mono text-xs text-secondary/50 bg-surface border border-secondary/10 px-2 py-0.5">
-                            {profiles.length} {profiles.length === 1 ? 'usuário' : 'usuários'}
-                        </span>
+                <div className="flex items-center gap-3 mb-6">
+                    <span className="material-symbols-outlined text-primary">group</span>
+                    <h2 className="font-display text-lg font-bold text-secondary uppercase tracking-wider">Usuários</h2>
+                    <span className="font-mono text-xs text-secondary/50 bg-surface border border-secondary/10 px-2 py-0.5">
+                        {profiles.length} {profiles.length === 1 ? 'usuário' : 'usuários'}
+                    </span>
+                </div>
+
+                {loading ? (
+                    <div className="flex items-center justify-center py-16">
+                        <span className="animate-spin material-symbols-outlined text-primary text-3xl">progress_activity</span>
                     </div>
+                ) : (
+                    <div className="space-y-3">
+                        {profiles.map((p) => {
+                            const isCurrentUser = p.user_id === user?.id;
+                            const isPending = p.role === 'pending';
+                            const isDenied = p.role === 'denied';
 
-                    {loading ? (
-                        <div className="flex items-center justify-center py-16">
-                            <span className="animate-spin material-symbols-outlined text-primary text-3xl">progress_activity</span>
-                        </div>
-                    ) : (
-                        <div className="space-y-3">
-                            {profiles.map((p) => {
-                                const isCurrentUser = p.user_id === user?.id;
-                                const isPending = p.role === 'pending';
-                                const isDenied = p.role === 'denied';
-
-                                return (
-                                    <div
-                                        key={p.id}
-                                        className={`border-2 border-secondary bg-surface p-5 transition-all ${isPending ? 'shadow-hard border-amber-400 bg-amber-50/30' : 'shadow-hard-sm'}`}
-                                    >
-                                        <div className="flex items-center justify-between gap-4">
-                                            {/* User Info */}
-                                            <div className="flex items-center gap-4 min-w-0 flex-1">
-                                                <div className={`h-11 w-11 rounded-full flex items-center justify-center text-white text-sm font-bold border-2 border-secondary shrink-0 ${p.role === 'admin' ? 'bg-primary' : p.role === 'member' ? 'bg-secondary' : p.role === 'pending' ? 'bg-amber-500' : 'bg-gray-400'}`}>
-                                                    <span className="material-symbols-outlined text-xl">{roleIcons[p.role]}</span>
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <div className="flex items-center gap-2">
-                                                        <h3 className="font-display font-bold text-secondary truncate">
-                                                            {p.display_name || 'Sem nome'}
-                                                        </h3>
-                                                        {isCurrentUser && (
-                                                            <span className="font-mono text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 uppercase font-bold">Você</span>
-                                                        )}
-                                                    </div>
-                                                    <p className="font-mono text-xs text-secondary/50 truncate mt-0.5">
-                                                        Criado em {new Date(p.created_at).toLocaleDateString('pt-BR')}
-                                                    </p>
-                                                </div>
-                                            </div>
-
-                                            {/* Status Badge */}
-                                            <div className="flex items-center gap-3 shrink-0">
-                                                <span className={`font-display text-xs font-bold uppercase tracking-wider px-3 py-1.5 ${roleColors[p.role]}`}>
-                                                    {roleLabels[p.role]}
-                                                </span>
-
-                                                {/* Action Buttons */}
-                                                {!isCurrentUser && (
-                                                    <div className="flex items-center gap-2">
-                                                        {isPending && (
-                                                            <>
-                                                                <button
-                                                                    onClick={() => updateRole(p.id, 'member')}
-                                                                    disabled={updating === p.id}
-                                                                    className="flex items-center gap-1.5 bg-accent-success text-white font-display text-xs font-bold uppercase tracking-wider px-3 py-2 border-2 border-secondary shadow-hard-sm hover:shadow-hard hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all disabled:opacity-50"
-                                                                    title="Aprovar acesso"
-                                                                >
-                                                                    {updating === p.id ? (
-                                                                        <span className="animate-spin material-symbols-outlined text-sm">progress_activity</span>
-                                                                    ) : (
-                                                                        <span className="material-symbols-outlined text-sm">check</span>
-                                                                    )}
-                                                                    Aprovar
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => updateRole(p.id, 'denied')}
-                                                                    disabled={updating === p.id}
-                                                                    className="flex items-center gap-1.5 bg-accent-error text-white font-display text-xs font-bold uppercase tracking-wider px-3 py-2 border-2 border-secondary shadow-hard-sm hover:shadow-hard hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all disabled:opacity-50"
-                                                                    title="Negar acesso"
-                                                                >
-                                                                    <span className="material-symbols-outlined text-sm">close</span>
-                                                                    Negar
-                                                                </button>
-                                                            </>
-                                                        )}
-
-                                                        {isDenied && (
-                                                            <button
-                                                                onClick={() => updateRole(p.id, 'member')}
-                                                                disabled={updating === p.id}
-                                                                className="flex items-center gap-1.5 bg-accent-success text-white font-display text-xs font-bold uppercase tracking-wider px-3 py-2 border-2 border-secondary shadow-hard-sm hover:shadow-hard hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all disabled:opacity-50"
-                                                                title="Reativar acesso"
-                                                            >
-                                                                <span className="material-symbols-outlined text-sm">undo</span>
-                                                                Reativar
-                                                            </button>
-                                                        )}
-
-                                                        {p.role === 'member' && (
-                                                            <div className="flex items-center gap-2">
-                                                                <button
-                                                                    onClick={() => updateRole(p.id, 'admin')}
-                                                                    disabled={updating === p.id}
-                                                                    className="flex items-center gap-1.5 bg-secondary text-white font-display text-xs font-bold uppercase tracking-wider px-3 py-2 border-2 border-secondary shadow-hard-sm hover:shadow-hard hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all disabled:opacity-50"
-                                                                    title="Tornar admin"
-                                                                >
-                                                                    <span className="material-symbols-outlined text-sm">shield_person</span>
-                                                                    Admin
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => updateRole(p.id, 'denied')}
-                                                                    disabled={updating === p.id}
-                                                                    className="flex items-center gap-1.5 bg-accent-error/80 text-white font-display text-xs font-bold uppercase tracking-wider px-3 py-2 border-2 border-secondary shadow-hard-sm hover:shadow-hard hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all disabled:opacity-50"
-                                                                    title="Remover acesso"
-                                                                >
-                                                                    <span className="material-symbols-outlined text-sm">person_remove</span>
-                                                                    Remover
-                                                                </button>
-                                                            </div>
-                                                        )}
-
-                                                        {p.role === 'admin' && (
-                                                            <button
-                                                                onClick={() => updateRole(p.id, 'member')}
-                                                                disabled={updating === p.id}
-                                                                className="flex items-center gap-1.5 bg-gray-500 text-white font-display text-xs font-bold uppercase tracking-wider px-3 py-2 border-2 border-secondary shadow-hard-sm hover:shadow-hard hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all disabled:opacity-50"
-                                                                title="Remover admin"
-                                                            >
-                                                                <span className="material-symbols-outlined text-sm">shield</span>
-                                                                Remover Admin
-                                                            </button>
-                                                        )}
-                                                    </div>
+                            return (
+                                <div
+                                    key={p.id}
+                                    className={`border-2 border-secondary bg-surface p-4 sm:p-5 transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${isPending ? 'shadow-hard border-amber-400 bg-amber-50/30' : 'shadow-hard-sm'}`}
+                                >
+                                    {/* User Info */}
+                                    <div className="flex items-center gap-3 sm:gap-4 min-w-0 w-full sm:w-auto flex-1">
+                                        <div className={`h-11 w-11 rounded-full flex items-center justify-center text-white text-sm font-bold border-2 border-secondary shrink-0 ${p.role === 'admin' ? 'bg-primary' : p.role === 'member' ? 'bg-secondary' : p.role === 'pending' ? 'bg-amber-500' : 'bg-gray-400'}`}>
+                                            <span className="material-symbols-outlined text-xl">{roleIcons[p.role]}</span>
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="font-display font-bold text-secondary truncate">
+                                                    {p.display_name || 'Sem nome'}
+                                                </h3>
+                                                {isCurrentUser && (
+                                                    <span className="font-mono text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 uppercase font-bold">Você</span>
                                                 )}
                                             </div>
+                                            <p className="font-mono text-xs text-secondary/50 truncate mt-0.5">
+                                                Criado em {new Date(p.created_at).toLocaleDateString('pt-BR')}
+                                            </p>
                                         </div>
                                     </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                </section>
+
+                                    {/* Status Badge */}
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 shrink-0 mt-3 sm:mt-0 w-full sm:w-auto">
+                                        <span className={`font-display text-xs font-bold uppercase tracking-wider px-3 py-1.5 w-full sm:w-auto text-center ${roleColors[p.role]}`}>
+                                            {roleLabels[p.role]}
+                                        </span>
+
+                                        {/* Action Buttons */}
+                                        {!isCurrentUser && (
+                                            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
+                                                {isPending && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => updateRole(p.id, 'member')}
+                                                            disabled={updating === p.id}
+                                                            className="flex flex-1 sm:flex-none items-center justify-center sm:justify-start gap-1.5 bg-accent-success text-white font-display text-xs font-bold uppercase tracking-wider px-3 py-2 border-2 border-secondary shadow-hard-sm hover:shadow-hard hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all disabled:opacity-50"
+                                                            title="Aprovar acesso"
+                                                        >
+                                                            {updating === p.id ? (
+                                                                <span className="animate-spin material-symbols-outlined text-sm">progress_activity</span>
+                                                            ) : (
+                                                                <span className="material-symbols-outlined text-sm">check</span>
+                                                            )}
+                                                            Aprovar
+                                                        </button>
+                                                        <button
+                                                            onClick={() => updateRole(p.id, 'denied')}
+                                                            disabled={updating === p.id}
+                                                            className="flex flex-1 sm:flex-none items-center justify-center sm:justify-start gap-1.5 bg-accent-error text-white font-display text-xs font-bold uppercase tracking-wider px-3 py-2 border-2 border-secondary shadow-hard-sm hover:shadow-hard hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all disabled:opacity-50"
+                                                            title="Negar acesso"
+                                                        >
+                                                            <span className="material-symbols-outlined text-sm">close</span>
+                                                            Negar
+                                                        </button>
+                                                    </>
+                                                )}
+
+                                                {isDenied && (
+                                                    <button
+                                                        onClick={() => updateRole(p.id, 'member')}
+                                                        disabled={updating === p.id}
+                                                        className="flex items-center justify-center sm:justify-start w-full sm:w-auto gap-1.5 bg-accent-success text-white font-display text-xs font-bold uppercase tracking-wider px-3 py-2 border-2 border-secondary shadow-hard-sm hover:shadow-hard hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all disabled:opacity-50"
+                                                        title="Reativar acesso"
+                                                    >
+                                                        <span className="material-symbols-outlined text-sm">undo</span>
+                                                        Reativar
+                                                    </button>
+                                                )}
+
+                                                {p.role === 'member' && (
+                                                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
+                                                        <button
+                                                            onClick={() => updateRole(p.id, 'admin')}
+                                                            disabled={updating === p.id}
+                                                            className="flex flex-1 sm:flex-none items-center justify-center sm:justify-start gap-1.5 bg-secondary text-white font-display text-xs font-bold uppercase tracking-wider px-3 py-2 border-2 border-secondary shadow-hard-sm hover:shadow-hard hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all disabled:opacity-50"
+                                                            title="Tornar admin"
+                                                        >
+                                                            <span className="material-symbols-outlined text-sm">shield_person</span>
+                                                            Admin
+                                                        </button>
+                                                        <button
+                                                            onClick={() => updateRole(p.id, 'denied')}
+                                                            disabled={updating === p.id}
+                                                            className="flex flex-1 sm:flex-none items-center justify-center sm:justify-start gap-1.5 bg-accent-error/80 text-white font-display text-xs font-bold uppercase tracking-wider px-3 py-2 border-2 border-secondary shadow-hard-sm hover:shadow-hard hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all disabled:opacity-50"
+                                                            title="Remover acesso"
+                                                        >
+                                                            <span className="material-symbols-outlined text-sm">person_remove</span>
+                                                            Remover
+                                                        </button>
+                                                    </div>
+                                                )}
+
+                                                {p.role === 'admin' && (
+                                                    <button
+                                                        onClick={() => updateRole(p.id, 'member')}
+                                                        disabled={updating === p.id}
+                                                        className="flex items-center justify-center sm:justify-start w-full sm:w-auto gap-1.5 bg-gray-500 text-white font-display text-xs font-bold uppercase tracking-wider px-3 py-2 border-2 border-secondary shadow-hard-sm hover:shadow-hard hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all disabled:opacity-50"
+                                                        title="Remover admin"
+                                                    >
+                                                        <span className="material-symbols-outlined text-sm">shield</span>
+                                                        Remover Admin
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
         </div>
     );

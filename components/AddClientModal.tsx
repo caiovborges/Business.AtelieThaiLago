@@ -172,8 +172,8 @@ const ClientModal = ({ isOpen, onClose, onSave, editingClient }: ClientModalProp
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b-2 border-secondary sticky top-0 bg-white z-10">
-                    <h2 className="font-display text-xl font-bold uppercase tracking-tight text-secondary">
+                <div className="flex items-center justify-between px-4 md:px-6 py-4 border-b-2 border-secondary sticky top-0 bg-white z-10">
+                    <h2 className="font-display text-lg md:text-xl font-bold uppercase tracking-tight text-secondary">
                         {isEditing ? 'Editar Cliente' : 'Novo Cliente'}
                     </h2>
                     <button onClick={onClose} className="flex items-center justify-center h-8 w-8 hover:bg-gray-100 transition-colors">
@@ -214,8 +214,8 @@ const ClientModal = ({ isOpen, onClose, onSave, editingClient }: ClientModalProp
                                     <label
                                         key={item}
                                         className={`flex items-center gap-3 p-3 border-2 cursor-pointer transition-all ${checked
-                                                ? 'border-primary bg-primary/5 shadow-hard-sm'
-                                                : 'border-secondary/30 bg-surface hover:border-secondary/60'
+                                            ? 'border-primary bg-primary/5 shadow-hard-sm'
+                                            : 'border-secondary/30 bg-surface hover:border-secondary/60'
                                             } ${saving ? 'opacity-60 pointer-events-none' : ''}`}
                                     >
                                         <input
@@ -246,7 +246,7 @@ const ClientModal = ({ isOpen, onClose, onSave, editingClient }: ClientModalProp
                             Localização
                         </p>
 
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Estado</label>
                                 <select
@@ -312,7 +312,7 @@ const ClientModal = ({ isOpen, onClose, onSave, editingClient }: ClientModalProp
                     </div>
 
                     {/* Contato */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-bold uppercase tracking-wider text-secondary mb-1">Email</label>
                             <input
@@ -350,7 +350,7 @@ const ClientModal = ({ isOpen, onClose, onSave, editingClient }: ClientModalProp
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-3 pt-2">
+                    <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
                         <button
                             type="button"
                             onClick={onClose}
