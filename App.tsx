@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './AuthContext';
 import Sidebar from './components/Sidebar';
+import ErrorBoundary from './components/ErrorBoundary';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import ClientRegistry from './pages/ClientRegistry';
@@ -67,24 +68,26 @@ const App = () => {
   return (
     <Router>
       <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<Login />} />
+        <ErrorBoundary>
+          <Routes>
+            <Route path="/login" element={<Login />} />
 
-          <Route path="/" element={<ProtectedRoute />}>
-            <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="leads" element={<LeadsBoard />} />
-            <Route path="calendar" element={<CalendarPage />} />
-            <Route path="clients" element={<ClientRegistry />} />
-            <Route path="events" element={<EventCanvas />} />
-            <Route path="events/:id" element={<EventLedger />} />
-            <Route path="proposals" element={<ProposalStudio />} />
-            <Route path="proposals/:id" element={<ProposalEditor />} />
-            <Route path="financeiro" element={<Financeiro />} />
-            <Route path="settings" element={<Settings />} />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Route>
-        </Routes>
+            <Route path="/" element={<ProtectedRoute />}>
+              <Route index element={<Navigate to="/dashboard" replace />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="leads" element={<LeadsBoard />} />
+              <Route path="calendar" element={<CalendarPage />} />
+              <Route path="clients" element={<ClientRegistry />} />
+              <Route path="events" element={<EventCanvas />} />
+              <Route path="events/:id" element={<EventLedger />} />
+              <Route path="proposals" element={<ProposalStudio />} />
+              <Route path="proposals/:id" element={<ProposalEditor />} />
+              <Route path="financeiro" element={<Financeiro />} />
+              <Route path="settings" element={<Settings />} />
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Route>
+          </Routes>
+        </ErrorBoundary>
       </AuthProvider>
     </Router>
   );
