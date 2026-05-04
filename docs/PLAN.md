@@ -1,34 +1,48 @@
-# Login Page Blank Screen Investigation Plan
+# Event Planning Area - Implementation Plan
 
 ## Goal Description
-Diagnose and provide a fix for the intermittent white screen (blank page) issue that occurs when users attempt to enter the `/login` page. Or alternatively, fix any rendering issues that happen when the user goes from the Login screen to the Dashboard.
-
-## Assessment / Hypothesis
-1. **Uncaught Error in Dashboard / Protected Routes causing a React Crash (White Screen of Death)**:
-   When an authenticated user visits `/login`, the `Login` page correctly identifies the active session and navigates the user to `/dashboard` immediately (`<Navigate to="/dashboard" replace />`). If an uncaught JavaScript error happens anywhere in the Dashboard or Sidebar, React unmounts the entire app and presents a white screen. There is currently no `ErrorBoundary` component capturing these visual crashes. 
-2. **Authentication Timing**:
-   The issue is reported as "sometimes I enter it and the page goes blank". This fits perfectly with the fact that if a user has an untampered, valid long-lived session, they will briefly hit `/login`, redirect to `/dashboard`, and if the dashboard has an error reading their `profile` data (which loads asynchronously), it throws a rendering error.
+Adicionar uma área dedicada ao **Planejamento de Eventos**. O objetivo é permitir que você preveja os custos (deslocamento, materiais, equipe/pintoras) e visualize a margem de lucro estimada *antes* de registrar as despesas reais, garantindo a lucratividade. O planejamento ficará em uma página separada para não misturar com o financeiro real.
 
 ## User Review Required
-None required strictly, this follows the orchestrator pattern. Please approve the plan.
+> [!IMPORTANT]
+> O plano foi atualizado para criar uma **Página Dedicada** ao invés de abas no Financeiro.
 
 ## Proposed Changes
 
-### Application Core
-We will implement an ErrorBoundary to catch the white screens and show a fallback UI with the error message, and improve the authentication redirects.
-#### [NEW] `components/ErrorBoundary.tsx`(file:///c:/Projetos/Business%20Atelie%20Thai%20Lago/Business.AtelieThaiLago/components/ErrorBoundary.tsx)
-Create a generic class-based Error Boundary that catches runtime errors and shows a friendly error message instead of a blank white screen.
+### Database (Supabase)
+Criar uma migration para adicionar os seguintes campos à tabela `eventos`:
+- `valor_previsto` (numeric): O valor total cobrado do cliente (Receita Prevista).
+- `pintoras` (text[]): Lista de nomes das pintoras escaladas.
+- `custo_prev_materiais` (numeric): Custo estimado com materiais.
+- `custo_prev_deslocamento` (numeric): Custo estimado de transporte/hospedagem.
+- `custo_prev_equipe` (numeric): Custo estimado com o pagamento das pintoras.
+- `custo_prev_outros` (numeric): Margem para imprevistos ou outros custos.
 
-#### [MODIFY] `App.tsx`(file:///c:/Projetos/Business%20Atelie%20Thai%20Lago/Business.AtelieThaiLago/App.tsx)
-Wrap the `<Routes>` in the `ErrorBoundary` so we can see the exact error instead of the white screen.
+### Frontend UI
+
+#### [NEW] `pages/EventPlannerBoard.tsx` (ou similar)
+- Uma nova página acessível pelo menu lateral (Sidebar) chamada "Planejamento".
+- Mostrará a lista de eventos futuros.
+- Ao clicar em um evento, abrirá o painel de planejamento daquele evento específico.
+
+#### [NEW] Painel de Planejamento do Evento
+Pode ser um Modal ou uma tela expansível dentro da nova página de Planejamento. Conterá:
+- Formulário para definir o **Valor Fechado (Receita Prevista)**.
+- Campos dinâmicos/tags para adicionar **Nomes das Pintoras**.
+- Campos numéricos para estimar os custos de **Materiais**, **Deslocamento**, **Equipe** e **Outros**.
+- Um Dashboard mostrando a **Margem de Lucro Estimada** (Valor Previsto - Soma dos Custos Previstos) e o percentual de margem.
+
+#### [MODIFY] `App.tsx` & `components/Sidebar.tsx`
+- Adicionar a nova rota `/planejamento`.
+- Adicionar o item "Planejamento" no menu de navegação.
 
 ## Verification Plan
 
 ### Automated Tests
-Currently, the application does not have an extensive E2E suite, but we'll use Vite dev server to verify components.
-npm run dev
+- N/A para esta alteração.
 
 ### Manual Verification
-1. Open the application.
-2. Deliberately throw an error in `<Sidebar />` to verify the `ErrorBoundary` appears instead of a white screen.
-3. Test the login flow again to ensure a normal login displays the Dashboard.
+1. Navegar até a nova página "Planejamento" pelo menu.
+2. Selecionar um evento pendente/confirmado.
+3. Preencher os valores previstos e adicionar pintoras.
+4. Salvar e verificar se o cálculo de margem reflete a realidade e salva no banco de dados.

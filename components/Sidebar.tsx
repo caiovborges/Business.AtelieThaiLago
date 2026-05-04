@@ -92,6 +92,11 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
             <span className="font-display text-sm font-bold uppercase tracking-wider">Eventos</span>
           </NavLink>
 
+          <NavLink to="/planejamento" onClick={onClose} className={({ isActive }) => getLinkClass(isActive)}>
+            <span className={`material-symbols-outlined ${getIconClass(location.pathname.startsWith('/planejamento'))}`}>checklist</span>
+            <span className="font-display text-sm font-bold uppercase tracking-wider">Planejamento</span>
+          </NavLink>
+
           <NavLink to="/financeiro" onClick={onClose} className={({ isActive }) => getLinkClass(isActive)}>
             <span className={`material-symbols-outlined ${getIconClass(location.pathname.startsWith('/financeiro'))}`}>account_balance</span>
             <span className="font-display text-sm font-bold uppercase tracking-wider">Financeiro</span>

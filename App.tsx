@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import ClientRegistry from './pages/ClientRegistry';
 import EventCanvas from './pages/EventCanvas';
 import EventLedger from './pages/EventLedger';
+import EventPlanner from './pages/EventPlanner';
 import ProposalStudio from './pages/ProposalStudio';
 import ProposalEditor from './pages/ProposalEditor';
 import Financeiro from './pages/Financeiro';
@@ -79,6 +80,7 @@ const App = () => {
               <Route path="calendar" element={<CalendarPage />} />
               <Route path="clients" element={<ClientRegistry />} />
               <Route path="events" element={<EventCanvas />} />
+              <Route path="planejamento" element={<EventPlanner />} />
               <Route path="events/:id" element={<EventLedger />} />
               <Route path="proposals" element={<ProposalStudio />} />
               <Route path="proposals/:id" element={<ProposalEditor />} />
