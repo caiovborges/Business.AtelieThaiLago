@@ -33,6 +33,7 @@ const STATUS_COLORS: Record<string, string> = {
    'Confirmado': 'bg-blue-100 text-blue-800 border-blue-300',
    'Concluído': 'bg-green-100 text-green-800 border-green-300',
    'Cancelado': 'bg-red-100 text-red-800 border-red-300',
+   'Orçamento': 'bg-purple-100 text-purple-800 border-purple-300',
 };
 
 const EventLedger = () => {

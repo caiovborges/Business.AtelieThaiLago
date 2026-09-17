@@ -22,6 +22,7 @@ const STATUS_COLORS: Record<string, string> = {
    'Confirmado': 'bg-blue-100 text-blue-800 border-blue-300',
    'Concluído': 'bg-green-100 text-green-800 border-green-300',
    'Cancelado': 'bg-red-100 text-red-800 border-red-300',
+   'Orçamento': 'bg-purple-100 text-purple-800 border-purple-300',
 };
 
 const EventPlanner = () => {
@@ -48,7 +49,7 @@ const EventPlanner = () => {
       const { data, error } = await supabase
          .from('eventos')
          .select('id, nome, status, data_evento, valor_previsto, pintoras, custo_prev_materiais, custo_prev_deslocamento, custo_prev_equipe, custo_prev_outros, custos_personalizados, clients(name)')
-         .in('status', ['Pendente', 'Confirmado'])
+         .in('status', ['Pendente', 'Confirmado', 'Orçamento'])
          .order('data_evento', { ascending: true, nullsFirst: false });
 
       if (!error && data) {
@@ -177,7 +178,7 @@ const EventPlanner = () => {
                <div className="flex flex-col items-center justify-center py-20 text-center">
                   <span className="material-symbols-outlined text-6xl text-gray-300 mb-4">event_busy</span>
                   <h3 className="font-display text-xl font-bold text-secondary mb-1">Nenhum evento futuro</h3>
-                  <p className="font-body text-gray-500 mb-6">Apenas eventos Pendentes ou Confirmados aparecem aqui.</p>
+                  <p className="font-body text-gray-500 mb-6">Apenas eventos Pendentes, Confirmados ou Orçamentos aparecem aqui.</p>
                </div>
             ) : (
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -1,44 +1,41 @@
-# Event Planning Area - Implementation Plan
+# Planejamento de Cotações - Implementation Plan
 
 ## Goal Description
-Criar uma página de Calendário interativa para visualização fácil de compromissos e eventos. O calendário deve seguir a identidade visual da marca (usando cores como Rosa `#E6007E`, Escuro `#1A1A1A` e Fundo Claro `#F9F7F2`) e deve "conversar" com o calendário do iPhone (Apple Calendar).
+Atualmente o sistema apenas permite criar planejamento (custos, equipe, margem) para eventos que estão com status `Confirmado`. A necessidade é poder realizar todo o planejamento financeiro e de equipe para eventos que ainda são apenas "cotação" (orçamento não confirmado).
+
+Para resolver isso, vamos reintroduzir/adicionar o status `Orçamento` no fluxo de criação de eventos, e permitir que o Planejador carregue eventos com este status.
 
 ## User Review Required
 > [!IMPORTANT]
-> Sincronização entre sistemas (2-way sync com Apple) pode ser complexa. A abordagem recomendada (mais estável e rápida) é usar o padrão **iCal (.ics)**:
-> 1. **Web -> iPhone**: O sistema gera um link (feed) que você adiciona no seu iPhone. Assim, todos os eventos do sistema aparecem no seu celular automaticamente.
-> 2. **iPhone -> Web**: Você pode exportar o link público do seu iCloud Calendar e colocar no sistema, permitindo que o calendário do sistema exiba também seus compromissos pessoais do iPhone.
-> 
-> Você aprova esta abordagem de "Assinatura de Calendário (iCal)", ou prefere tentar uma conexão direta via API de terceiros?
+> Vamos criar o status **Orçamento** para representar essa fase de "Cotação" de um casamento não confirmado. 
+> Assim você poderá criar um evento na tela de Eventos marcando-o como "Orçamento" e, em seguida, ir na tela de Planejamento e adicionar os custos previstos para simular a margem.
+> Você está de acordo com usar o nome de status "Orçamento"? 
 
 ## Proposed Changes
 
 ### Frontend UI
 
-#### [NEW] `pages/CalendarPage.tsx`
-- Uma nova página acessível pelo menu lateral chamada "Calendário".
-- Utilização de uma interface de calendário (mensal/semanal), construída com componentes React e TailwindCSS.
-- Eventos serão exibidos em blocos com as cores da identidade visual (`#E6007E` para eventos principais).
-- Clicar em um evento abrirá seus detalhes (integrado aos `Eventos` existentes no `types.ts`).
+#### [MODIFY] `components/EventModal.tsx`
+- Adicionar `Orçamento` na lista `STATUS_OPTIONS`.
+- Definir uma cor específica para `Orçamento` no objeto `STATUS_COLORS` (ex: roxo ou amarelo).
+- Remover ou ajustar a regra que atualmente força o status para `Confirmado` quando editado.
 
-#### [MODIFY] `App.tsx` & `components/Sidebar.tsx`
-- Adicionar a nova rota `/calendario`.
-- Adicionar o item "Calendário" no menu principal.
+#### [MODIFY] `pages/EventCanvas.tsx`
+- Adicionar o filtro `Orçamento` no topo da tela (`ALL_STATUSES`).
+- Definir a cor para `Orçamento` em `STATUS_COLORS`.
 
-### Backend / Integração (Fase Seguinte)
-#### [NEW] Sincronização iCal (App -> iPhone)
-- Criação de uma rota API (ex: Serverless function na Vercel ou Supabase Edge Function) `/api/calendar/feed` que converta a lista de `Event` do banco de dados em formato `.ics`.
-- Você copiará o link dessa rota e "assinará" no seu iPhone.
+#### [MODIFY] `pages/EventPlanner.tsx`
+- Atualizar a busca no Supabase para buscar eventos com status `Orçamento` além de `Pendente` e `Confirmado`: `.in('status', ['Pendente', 'Confirmado', 'Orçamento'])`.
+- Definir a cor em `STATUS_COLORS`.
+- Atualizar os textos e ícones que indicam que apenas eventos confirmados aparecem (para incluir orçamentos).
 
-#### [NEW] Leitura iCal (iPhone -> App) *opcional*
-- Adição de um campo em Configurações para colar a URL pública do seu iCloud Calendar.
-- O Frontend fará o parse desse `.ics` e mesclará na visualização do seu calendário no web app.
+#### [MODIFY] `pages/EventLedger.tsx`
+- Definir a cor para `Orçamento` em `STATUS_COLORS` para manter a consistência visual quando for ver as finanças (caso aplicável).
 
 ## Verification Plan
 
-### Automated Tests
-- Testar a geração do feed `.ics` para garantir que o formato é válido e reconhecido por clientes de calendário (Apple, Google, Outlook).
-
 ### Manual Verification
-1. Acessar a página de Calendário e verificar o design responsivo.
-2. Assinar o feed de teste gerado no iPhone e verificar se um evento de teste é exibido.
+1. Ir na aba Eventos, clicar em "Novo Evento" e verificar se é possível salvar como "Orçamento".
+2. Ir na aba Planejamento e verificar se o evento "Orçamento" aparece na listagem.
+3. Clicar no evento de orçamento e verificar se é possível simular os custos e equipe normalmente.
+4. Mudar o status do evento para "Confirmado" e garantir que o planejamento salvo não se perdeu.
