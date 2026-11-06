@@ -10,11 +10,6 @@ const Login = () => {
    const [error, setError] = useState('');
    const [loading, setLoading] = useState(false);
 
-   // If already logged in, redirect to dashboard
-   if (!authLoading && user) {
-      return <Navigate to="/dashboard" replace />;
-   }
-
    const handleLogin = async (e: React.FormEvent) => {
       e.preventDefault();
       setError('');
@@ -56,6 +51,11 @@ const Login = () => {
       }, 5000);
       return () => clearInterval(interval);
    }, []);
+
+   // If already logged in, redirect to dashboard
+   if (!authLoading && user) {
+      return <Navigate to="/dashboard" replace />;
+   }
 
    return (
       <div className="relative flex min-h-screen w-full flex-col lg:flex-row bg-background-light">

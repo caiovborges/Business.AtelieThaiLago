@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
+import { parseValor } from '../valores';
 
 interface Categoria {
    id: number;
@@ -109,11 +110,6 @@ const EventLedger = () => {
       fetchData();
    }, [id]);
 
-   const parseAmount = (val: string): number => {
-      const cleaned = val.replace(/\./g, '').replace(',', '.');
-      return parseFloat(cleaned) || 0;
-   };
-
    const handleAddReceita = async () => {
       if (!incDesc.trim() || !incAmount || !user || !id) return;
       setAddingInc(true);
@@ -123,7 +119,7 @@ const EventLedger = () => {
          tipo: 'receita',
          descricao: incDesc.trim(),
          categoria_id: incCatId ? Number(incCatId) : null,
-         valor: parseAmount(incAmount),
+         valor: parseValor(incAmount),
          data: incDate || null,
       });
       if (error) {
@@ -145,7 +141,7 @@ const EventLedger = () => {
          tipo: 'despesa',
          descricao: expDesc.trim(),
          categoria_id: expCatId ? Number(expCatId) : null,
-         valor: parseAmount(expAmount),
+         valor: parseValor(expAmount),
          data: expDate || null,
       });
       if (error) {

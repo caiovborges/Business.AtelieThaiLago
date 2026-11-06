@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
+import { parseValor } from '../valores';
 
 interface EventoPlanejamento {
    id: string;
@@ -94,8 +95,7 @@ const EventPlanner = () => {
       if ((e.type === 'keydown' && (e as React.KeyboardEvent).key !== 'Enter')) return;
       e.preventDefault();
       
-      const parseNum = (val: string) => parseFloat(val.replace(/\./g, '').replace(',', '.')) || 0;
-      const valorFormatado = parseNum(novoValorCusto);
+      const valorFormatado = parseValor(novoValorCusto);
       
       if (!novaDescricaoCusto.trim() || valorFormatado <= 0) return;
 
@@ -115,14 +115,12 @@ const EventPlanner = () => {
       if (!selectedEvent) return;
       setSaving(true);
 
-      const parseNum = (val: string) => parseFloat(val.replace(/\./g, '').replace(',', '.')) || 0;
-
       const payload = {
-         valor_previsto: parseNum(valorPrevisto),
-         custo_prev_materiais: parseNum(custoMateriais),
-         custo_prev_deslocamento: parseNum(custoDeslocamento),
-         custo_prev_equipe: parseNum(custoEquipe),
-         custo_prev_outros: parseNum(custoOutros),
+         valor_previsto: parseValor(valorPrevisto),
+         custo_prev_materiais: parseValor(custoMateriais),
+         custo_prev_deslocamento: parseValor(custoDeslocamento),
+         custo_prev_equipe: parseValor(custoEquipe),
+         custo_prev_outros: parseValor(custoOutros),
          pintoras: pintoras,
          custos_personalizados: custosPersonalizados
       };
@@ -141,13 +139,13 @@ const EventPlanner = () => {
    const totalCustosPersonalizados = custosPersonalizados.reduce((acc, curr) => acc + curr.valor, 0);
 
    const totalCustos = 
-      (parseFloat(custoMateriais) || 0) + 
-      (parseFloat(custoDeslocamento) || 0) + 
-      (parseFloat(custoEquipe) || 0) + 
-      (parseFloat(custoOutros) || 0) +
+      parseValor(custoMateriais) + 
+      parseValor(custoDeslocamento) + 
+      parseValor(custoEquipe) + 
+      parseValor(custoOutros) +
       totalCustosPersonalizados;
       
-   const receitaPrevista = parseFloat(valorPrevisto) || 0;
+   const receitaPrevista = parseValor(valorPrevisto);
    const margemLucro = receitaPrevista - totalCustos;
    const percentualMargem = receitaPrevista > 0 ? ((margemLucro / receitaPrevista) * 100).toFixed(1) : '0.0';
 

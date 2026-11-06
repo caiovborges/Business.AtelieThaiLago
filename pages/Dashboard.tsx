@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
+import { parseValor } from '../valores';
 
 interface Categoria {
   id: number;
@@ -144,11 +145,6 @@ const Dashboard = () => {
       });
   })();
 
-  const parseAmount = (val: string): number => {
-    const cleaned = val.replace(/\./g, '').replace(',', '.');
-    return parseFloat(cleaned) || 0;
-  };
-
   const handleAddTransaction = async () => {
     if (!addDesc.trim() || !addAmount || !user) return;
     setAdding(true);
@@ -158,7 +154,7 @@ const Dashboard = () => {
       tipo: addTipo,
       descricao: addDesc.trim(),
       categoria_id: addCatId ? Number(addCatId) : null,
-      valor: parseAmount(addAmount),
+      valor: parseValor(addAmount),
       data: addDate || null,
     });
     if (error) {

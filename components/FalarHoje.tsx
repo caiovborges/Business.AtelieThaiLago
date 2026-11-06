@@ -7,6 +7,7 @@ interface FalarHojeProps<L extends LeadContato> {
     erro: string;
     ocupado: string | null;
     onAbrir: (lead: L) => void;
+    onOrcamento: (lead: L) => void;
     onFeito: (item: ItemContato<L>) => void;
     onPerdido: (lead: L) => void;
 }
@@ -14,7 +15,7 @@ interface FalarHojeProps<L extends LeadContato> {
 const formatarData = (valor: string) =>
     new Date(valor).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 
-function FalarHoje<L extends LeadContato>({ leads, loading, erro, ocupado, onAbrir, onFeito, onPerdido }: FalarHojeProps<L>) {
+function FalarHoje<L extends LeadContato>({ leads, loading, erro, ocupado, onAbrir, onOrcamento, onFeito, onPerdido }: FalarHojeProps<L>) {
     const { hoje, atrasados, semContato, agendadosDepois, casamentoPassado } = organizarContatos(leads);
 
     if (erro) {
@@ -68,7 +69,7 @@ function FalarHoje<L extends LeadContato>({ leads, loading, erro, ocupado, onAbr
                     {followup?.notes && <p className="text-xs text-gray-500 mt-1 truncate">{followup.notes}</p>}
                 </button>
 
-                <div className="grid grid-cols-3 lg:flex gap-2 shrink-0">
+                <div className="grid grid-cols-2 lg:flex gap-2 shrink-0">
                     {whatsapp ? (
                         <a
                             href={whatsapp}
@@ -88,6 +89,14 @@ function FalarHoje<L extends LeadContato>({ leads, loading, erro, ocupado, onAbr
                             Corrigir telefone
                         </button>
                     )}
+                    <button
+                        type="button"
+                        onClick={() => onOrcamento(lead)}
+                        className="h-11 px-3 bg-white text-secondary border-2 border-secondary rounded-sm flex items-center justify-center gap-1 text-xs font-bold uppercase hover:bg-gray-50 transition-colors"
+                    >
+                        <span className="material-symbols-outlined text-[18px]">request_quote</span>
+                        Orçamento
+                    </button>
                     <button
                         type="button"
                         onClick={() => onFeito(item)}

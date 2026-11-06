@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
+import { parseValor } from '../valores';
 
 interface Lead {
     id: string;
@@ -161,10 +162,7 @@ const ProposalEditor = () => {
 
     useEffect(() => { fetchData(); }, [id]);
 
-    const parseAmount = (val: string): number => {
-        const cleaned = val.replace(/\./g, '').replace(',', '.');
-        return parseFloat(cleaned) || 0;
-    };
+    const parseAmount = parseValor;
 
     const calcularCustoCombustivel = () => {
         const km = parseFloat(String(distanciaKm).replace(',', '.')) || 0;

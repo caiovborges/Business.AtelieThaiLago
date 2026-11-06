@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
 import AddLeadModal, { LeadFormData, EditingLead, PIPELINE_STAGES } from '../components/AddLeadModal';
 import FalarHoje from '../components/FalarHoje';
+import OrcamentoModal from '../components/OrcamentoModal';
 import { DIAS_APOS_LIMITE, ItemContato, dataProximoContato, diasAteProximoContato, linkWhatsApp, mensagemContato } from '../leadContato';
 
 // Status colors mapping
@@ -29,6 +30,7 @@ const LeadsBoard = () => {
     const [erroLeads, setErroLeads] = useState('');
     const [leadOcupado, setLeadOcupado] = useState<string | null>(null);
     const [aviso, setAviso] = useState('');
+    const [leadOrcamento, setLeadOrcamento] = useState<EditingLead | null>(null);
 
     // Modal State
     const [modalOpen, setModalOpen] = useState(false);
@@ -396,14 +398,14 @@ const LeadsBoard = () => {
 
             {/* Content Area */}
             <div className="flex-1 overflow-hidden p-4 md:p-8 z-10 w-full relative">
-                {aviso && viewMode === 'hoje' && (
+                {aviso && (viewMode === 'hoje' || viewMode === 'funnel') && (
                     <div className="mb-4 p-3 bg-accent-success/10 border-2 border-accent-success text-accent-success text-sm font-medium flex items-center gap-2">
                         <span className="material-symbols-outlined text-lg">check_circle</span>
                         {aviso}
                     </div>
                 )}
                 {viewMode === 'hoje' ? (
-                    <FalarHoje
+                    <FalarHoje<EditingLead>
                         leads={leads.filter(l =>
                             l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             (l.email || '').toLowerCase().includes(searchTerm.toLowerCase()))}
@@ -411,6 +413,7 @@ const LeadsBoard = () => {
                         erro={erroLeads}
                         ocupado={leadOcupado}
                         onAbrir={(lead) => { setEditingLead(lead); setModalOpen(true); }}
+                        onOrcamento={setLeadOrcamento}
                         onFeito={handleContatoFeito}
                         onPerdido={(lead) => {
                             if (window.confirm(`Marcar ${lead.name} como Perdido?`)) {
@@ -587,6 +590,14 @@ const LeadsBoard = () => {
 
                                             {/* Bottom: Actions (Always Visible) */}
                                             <div className="flex gap-2 pt-2 border-t border-gray-100 group-hover:border-gray-200 transition-colors">
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setLeadOrcamento(lead); }}
+                                                    className="px-2 py-1.5 bg-white text-secondary border border-secondary/30 rounded-sm flex items-center justify-center hover:bg-gray-50 transition-all"
+                                                    title="Orçamento"
+                                                    aria-label="Orçamento"
+                                                >
+                                                    <span className="material-symbols-outlined text-[16px]">request_quote</span>
+                                                </button>
                                                 {(() => {
                                                     const contatos = (lead.lead_followups || []).filter(fu => fu.done).length;
                                                     const whatsapp = linkWhatsApp(lead.phone, mensagemContato(lead, contatos));
@@ -635,6 +646,12 @@ const LeadsBoard = () => {
                     </div>
                 )}
             </div>
+
+            <OrcamentoModal
+                lead={leadOrcamento}
+                onClose={() => setLeadOrcamento(null)}
+                onSalvo={(mensagem) => { setAviso(mensagem); fetchLeads(); }}
+            />
 
             <AddLeadModal
                 isOpen={modalOpen}
