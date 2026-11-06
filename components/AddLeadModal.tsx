@@ -289,7 +289,7 @@ const AddLeadModal = ({ isOpen, onClose, onSave, editingLead, ocultarFollowups =
                                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Etapa do Funil</label>
                                 <select className="w-full bg-white border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none appearance-none font-bold"
                                     value={status} onChange={e => setStatus(e.target.value)}>
-                                    {PIPELINE_STAGES.map(s => <option key={s} value={s}>{s}</option>)}
+                                    {PIPELINE_STAGES.filter(s => s !== 'Fechado' || status === 'Fechado').map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
                             </div>
                             <div>

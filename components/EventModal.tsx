@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
+import { abrirContrato } from '../contratos';
 
 interface Estado {
     id: number;
@@ -425,15 +426,13 @@ const EventModal = ({ isOpen, onClose, onSave, editingEvent }: EventModalProps) 
                         {existingContratoUrl && !contratoFile && (
                             <div className="flex items-center gap-2 p-2 bg-white border border-secondary/40">
                                 <span className="material-symbols-outlined text-primary text-lg">attach_file</span>
-                                <a
-                                    href={existingContratoUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                <button
+                                    type="button"
                                     className="text-sm font-mono text-primary hover:underline truncate"
-                                    onClick={(e) => e.stopPropagation()}
+                                    onClick={() => abrirContrato(existingContratoUrl).catch((falha) => setError(falha.message))}
                                 >
-                                    Contrato anexado
-                                </a>
+                                    Abrir contrato
+                                </button>
                             </div>
                         )}
 

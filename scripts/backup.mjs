@@ -68,7 +68,7 @@ async function exportarContratos(supabase, eventos, pasta) {
   const urls = eventos.map(e => e.contrato_url).filter(Boolean);
   const falhas = [];
   for (const url of urls) {
-    const caminho = decodeURIComponent(url.split('/contratos/')[1] ?? '');
+    const caminho = url.includes('/contratos/') ? decodeURIComponent(url.split('/contratos/')[1]) : url;
     const { data, error } = caminho
       ? await supabase.storage.from('contratos').download(caminho)
       : { data: null, error: new Error('link invalido') };

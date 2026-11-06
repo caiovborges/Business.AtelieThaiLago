@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
 import { parseValor } from '../valores';
@@ -28,6 +29,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 const EventPlanner = () => {
    const { user } = useAuth();
+   const [parametros, setParametros] = useSearchParams();
    const [events, setEvents] = useState<EventoPlanejamento[]>([]);
    const [loading, setLoading] = useState(true);
    const [selectedEvent, setSelectedEvent] = useState<EventoPlanejamento | null>(null);
@@ -73,6 +75,14 @@ const EventPlanner = () => {
       setPintoras(event.pintoras || []);
       setCustosPersonalizados(event.custos_personalizados || []);
    };
+
+   useEffect(() => {
+      const eventoId = parametros.get('evento');
+      if (!eventoId || events.length === 0) return;
+      const evento = events.find(e => e.id === eventoId);
+      if (evento) openPlanner(evento);
+      setParametros({}, { replace: true });
+   }, [events]);
 
    const closePlanner = () => {
       setSelectedEvent(null);

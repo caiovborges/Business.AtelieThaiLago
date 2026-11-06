@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
 import AddLeadModal, { EditingLead, LeadFormData, PIPELINE_STAGES } from '../components/AddLeadModal';
@@ -7,10 +7,20 @@ import LeadFollowups from '../components/LeadFollowups';
 import OrcamentoModal, { CAMPOS_ORCAMENTO, OrcamentoSalvo, itensComValor } from '../components/OrcamentoModal';
 import { FollowupResumo, linkWhatsApp, mensagemContato } from '../leadContato';
 import { marcarPerdido, registrarContatoFeito } from '../leadAcoes';
+import FecharLeadModal from '../components/FecharLeadModal';
+import { abrirContrato, enviarContrato, removerContrato } from '../contratos';
 import { formatarReais } from '../valores';
 
 interface LeadCompleto extends EditingLead {
     cidades?: { nome: string; estado_id: number; estados?: { sigla: string } | null } | null;
+}
+
+interface EventoFechado {
+    id: string;
+    status: string;
+    contrato_url: string | null;
+    plano_fechado: string | null;
+    valor_previsto: number | null;
 }
 
 const ETAPAS = ['Novo Lead', 'Proposta Enviada', 'Em Negociação', 'Fechado'];
@@ -68,6 +78,7 @@ const CartaoOrcamento = ({ orcamento }: { orcamento: OrcamentoSalvo }) => {
 const LeadProfile = () => {
     const { id } = useParams<{ id: string }>();
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [lead, setLead] = useState<LeadCompleto | null>(null);
     const [followups, setFollowups] = useState<FollowupResumo[]>([]);
     const [orcamentos, setOrcamentos] = useState<OrcamentoSalvo[]>([]);
@@ -78,15 +89,18 @@ const LeadProfile = () => {
     const [editando, setEditando] = useState(false);
     const [modalOrcamento, setModalOrcamento] = useState<{ editarId: string | null } | null>(null);
     const [versaoFollowups, setVersaoFollowups] = useState(0);
+    const [evento, setEvento] = useState<EventoFechado | null>(null);
+    const [fechando, setFechando] = useState(false);
 
     const carregar = async () => {
         if (!id) return;
-        const [leadRes, followupsRes, orcamentosRes] = await Promise.all([
+        const [leadRes, followupsRes, orcamentosRes, eventoRes] = await Promise.all([
             supabase.from('leads').select('*, cidades(nome, estado_id, estados(sigla))').eq('id', id).maybeSingle(),
             supabase.from('lead_followups').select('id, scheduled_at, done, type, notes').eq('lead_id', id).order('scheduled_at', { ascending: true }),
             supabase.from('propostas').select(CAMPOS_ORCAMENTO).eq('lead_id', id).order('created_at', { ascending: false }),
+            supabase.from('eventos').select('id, status, contrato_url, plano_fechado, valor_previsto').eq('lead_id', id).maybeSingle(),
         ]);
-        const falha = leadRes.error || followupsRes.error || orcamentosRes.error;
+        const falha = leadRes.error || followupsRes.error || orcamentosRes.error || eventoRes.error;
         setErro(falha ? falha.message : '');
         if (leadRes.data) {
             const dados = leadRes.data as LeadCompleto;
@@ -94,6 +108,7 @@ const LeadProfile = () => {
         } else if (!falha) {
             setLead(null);
         }
+        if (!eventoRes.error) setEvento(eventoRes.data as EventoFechado | null);
         if (followupsRes.data) setFollowups(followupsRes.data as FollowupResumo[]);
         if (orcamentosRes.data) setOrcamentos(orcamentosRes.data as unknown as OrcamentoSalvo[]);
         setCarregando(false);
@@ -155,6 +170,17 @@ const LeadProfile = () => {
             return `Etapa alterada para ${status}.`;
         });
 
+    const anexarContrato = (arquivo: File, eventoId: string) =>
+        executar(async () => {
+            const caminho = await enviarContrato(arquivo, user!.id);
+            const { error } = await supabase.from('eventos').update({ contrato_url: caminho }).eq('id', eventoId);
+            if (error) {
+                await removerContrato(caminho);
+                throw new Error('Erro ao salvar o contrato: ' + error.message);
+            }
+            return 'Contrato anexado.';
+        });
+
     const salvarDados = async (dados: LeadFormData) => {
         const { error } = await supabase.from('leads').update({ ...dados, event_date: dados.event_date || null }).eq('id', lead.id);
         if (error) throw error;
@@ -186,6 +212,12 @@ const LeadProfile = () => {
                         ) : (
                             <button type="button" onClick={() => setEditando(true)} className={`${botao} bg-white text-gray-500`}>Corrigir telefone</button>
                         )}
+                        {!evento && !perdido && (
+                            <button type="button" disabled={ocupado} onClick={() => setFechando(true)} className={`${botao} bg-accent-success text-white`}>
+                                <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                                Fechar
+                            </button>
+                        )}
                         <button
                             type="button"
                             disabled={ocupado || perdido || lead.status === 'Fechado'}
@@ -197,6 +229,46 @@ const LeadProfile = () => {
                         </button>
                     </div>
                 </header>
+
+                {evento && (
+                    <Secao titulo="Casamento fechado">
+                        <dl className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <Dado rotulo="Plano">{evento.plano_fechado}</Dado>
+                            <Dado rotulo="Valor total">{formatarReais(Number(evento.valor_previsto) || 0)}</Dado>
+                            <Dado rotulo="Status do evento">{evento.status}</Dado>
+                        </dl>
+                        <div className="flex flex-wrap gap-2">
+                            <Link to={`/planejamento?evento=${evento.id}`} className={`${botao} bg-primary text-white`}>
+                                <span className="material-symbols-outlined text-[18px]">checklist</span>
+                                Planejamento
+                            </Link>
+                            <Link to={`/events/${evento.id}`} className={`${botao} bg-white text-secondary hover:bg-gray-50`}>
+                                <span className="material-symbols-outlined text-[18px]">payments</span>
+                                Financeiro
+                            </Link>
+                            {evento.contrato_url && (
+                                <button type="button" onClick={() => abrirContrato(evento.contrato_url!).catch(falha => setErro(falha.message))} className={`${botao} bg-white text-secondary hover:bg-gray-50`}>
+                                    <span className="material-symbols-outlined text-[18px]">description</span>
+                                    Abrir contrato
+                                </button>
+                            )}
+                            <label className={`${botao} bg-white text-secondary hover:bg-gray-50 cursor-pointer ${ocupado ? 'opacity-50 pointer-events-none' : ''}`}>
+                                <span className="material-symbols-outlined text-[18px]">upload_file</span>
+                                {evento.contrato_url ? 'Substituir contrato' : 'Anexar contrato'}
+                                <input
+                                    type="file"
+                                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                                    className="sr-only"
+                                    onChange={e => {
+                                        const arquivo = e.target.files?.[0];
+                                        e.target.value = '';
+                                        if (arquivo) anexarContrato(arquivo, evento.id);
+                                    }}
+                                />
+                            </label>
+                        </div>
+                    </Secao>
+                )}
 
                 {aviso && (
                     <div className="p-3 bg-accent-success/10 border-2 border-accent-success text-accent-success text-sm font-medium flex items-center gap-2">
@@ -219,10 +291,10 @@ const LeadProfile = () => {
                             <select
                                 className="bg-white border-2 border-secondary p-2 font-mono text-sm text-secondary normal-case tracking-normal focus:border-primary outline-none"
                                 value={lead.status}
-                                disabled={ocupado}
+                                disabled={ocupado || !!evento}
                                 onChange={e => alterarEtapa(e.target.value)}
                             >
-                                {PIPELINE_STAGES.map(s => <option key={s} value={s}>{s}</option>)}
+                                {PIPELINE_STAGES.filter(s => s !== 'Fechado' || lead.status === 'Fechado').map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                         </label>
                     }
@@ -331,6 +403,11 @@ const LeadProfile = () => {
                 onSave={salvarDados}
                 editingLead={lead}
                 ocultarFollowups
+            />
+            <FecharLeadModal
+                lead={fechando ? lead : null}
+                onClose={() => setFechando(false)}
+                onFechado={(eventoId) => navigate(`/planejamento?evento=${eventoId}`)}
             />
             <OrcamentoModal
                 lead={modalOrcamento ? lead : null}

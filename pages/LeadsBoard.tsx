@@ -5,6 +5,7 @@ import { useAuth } from '../AuthContext';
 import AddLeadModal, { LeadFormData, EditingLead, PIPELINE_STAGES } from '../components/AddLeadModal';
 import FalarHoje from '../components/FalarHoje';
 import OrcamentoModal from '../components/OrcamentoModal';
+import FecharLeadModal from '../components/FecharLeadModal';
 import { ItemContato, linkWhatsApp, mensagemContato } from '../leadContato';
 import { marcarPerdido, registrarContatoFeito } from '../leadAcoes';
 
@@ -32,6 +33,7 @@ const LeadsBoard = () => {
     const [leadOcupado, setLeadOcupado] = useState<string | null>(null);
     const [aviso, setAviso] = useState('');
     const [leadOrcamento, setLeadOrcamento] = useState<EditingLead | null>(null);
+    const [leadFechar, setLeadFechar] = useState<EditingLead | null>(null);
 
     // Modal State
     const [modalOpen, setModalOpen] = useState(false);
@@ -121,39 +123,6 @@ const LeadsBoard = () => {
             }
             fetchLeads();
         }
-    };
-
-    const handleConvertToClient = async (lead: EditingLead) => {
-        if (!window.confirm(`Converter ${lead.name} em cliente? Isso criará um novo registro em Clientes.`)) return;
-
-        // 1. Create Client
-        const { data: clientData, error: clientError } = await supabase.from('clients').insert({
-            user_id: user?.id,
-            name: lead.name,
-            email: lead.email,
-            phone: lead.phone,
-            instagram: lead.instagram,
-            interesse: lead.services, // Map services to interesse
-            cidade_id: lead.cidade_id,
-        }).select().single();
-
-        if (clientError) {
-            alert('Erro ao criar cliente: ' + clientError.message);
-            return;
-        }
-
-        // 2. Update Lead Status
-        const { error: updateError } = await supabase
-            .from('leads')
-            .update({ status: 'Fechado' })
-            .eq('id', lead.id);
-
-        if (updateError) {
-            console.error('Error updating status:', updateError);
-        }
-
-        alert(`Cliente ${lead.name} criado com sucesso!`);
-        fetchLeads(); // Refresh to remove from board
     };
 
     const handleMarkAsLost = async (lead: EditingLead) => {
@@ -439,15 +408,6 @@ const LeadsBoard = () => {
                                                     >
                                                         <span className="material-symbols-outlined text-[20px]">edit</span>
                                                     </button>
-                                                    {viewMode === 'closed' && (
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); handleConvertToClient(lead); }}
-                                                            className="p-2 hover:bg-green-50 text-gray-400 hover:text-green-600 rounded-full transition-colors"
-                                                            title="Virar Cliente / Reativar"
-                                                        >
-                                                            <span className="material-symbols-outlined text-[20px]">check_circle</span>
-                                                        </button>
-                                                    )}
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleDeleteLead(lead.id); }}
                                                         className="p-2 hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-full transition-colors"
@@ -579,9 +539,9 @@ const LeadsBoard = () => {
                                                     );
                                                 })()}
                                                 <button
-                                                    onClick={(e) => { e.stopPropagation(); handleConvertToClient(lead); }}
+                                                    onClick={(e) => { e.stopPropagation(); setLeadFechar(lead); }}
                                                     className="flex-1 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded-sm flex items-center justify-center gap-1 hover:bg-green-100 hover:shadow-sm transition-all"
-                                                    title="Fechar Venda (Virar Cliente)"
+                                                    title="Fechar: cria o cliente e o evento"
                                                 >
                                                     <span className="material-symbols-outlined text-[16px]">check_circle</span>
                                                     <span className="text-[10px] font-bold uppercase tracking-wide">Fechar</span>
@@ -610,6 +570,12 @@ const LeadsBoard = () => {
                     </div>
                 )}
             </div>
+
+            <FecharLeadModal
+                lead={leadFechar}
+                onClose={() => setLeadFechar(null)}
+                onFechado={(eventoId) => navigate(`/planejamento?evento=${eventoId}`)}
+            />
 
             <OrcamentoModal
                 lead={leadOrcamento}

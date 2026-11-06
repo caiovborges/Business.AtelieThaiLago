@@ -78,11 +78,7 @@ const EventCanvas = () => {
 
          if (uploadError) throw new Error('Erro ao enviar contrato: ' + uploadError.message);
 
-         const { data: urlData } = supabase.storage
-            .from('contratos')
-            .getPublicUrl(filePath);
-
-         contrato_url = urlData.publicUrl;
+         contrato_url = filePath;
       }
 
       const payload = {
