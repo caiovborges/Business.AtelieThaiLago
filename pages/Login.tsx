@@ -4,22 +4,11 @@ import { useAuth } from '../AuthContext';
 
 const Login = () => {
    const navigate = useNavigate();
-   const { signIn, signUp, user, loading: authLoading } = useAuth();
+   const { signIn, user, loading: authLoading } = useAuth();
    const [email, setEmail] = useState('');
    const [password, setPassword] = useState('');
    const [error, setError] = useState('');
-   const [success, setSuccess] = useState('');
    const [loading, setLoading] = useState(false);
-
-   // Signup modal state
-   const [showSignup, setShowSignup] = useState(false);
-   const [signupName, setSignupName] = useState('');
-   const [signupEmail, setSignupEmail] = useState('');
-   const [signupPassword, setSignupPassword] = useState('');
-   const [signupConfirm, setSignupConfirm] = useState('');
-   const [signupError, setSignupError] = useState('');
-   const [signupSuccess, setSignupSuccess] = useState('');
-   const [signupLoading, setSignupLoading] = useState(false);
 
    // If already logged in, redirect to dashboard
    if (!authLoading && user) {
@@ -29,7 +18,6 @@ const Login = () => {
    const handleLogin = async (e: React.FormEvent) => {
       e.preventDefault();
       setError('');
-      setSuccess('');
       setLoading(true);
 
       try {
@@ -52,61 +40,6 @@ const Login = () => {
          setError('Erro de conexão. Verifique sua internet e tente novamente.');
          setLoading(false);
       }
-   };
-
-   const handleSignup = async (e: React.FormEvent) => {
-      e.preventDefault();
-      setSignupError('');
-      setSignupSuccess('');
-
-      if (signupPassword.length < 6) {
-         setSignupError('A senha deve ter pelo menos 6 caracteres.');
-         return;
-      }
-
-      if (signupPassword !== signupConfirm) {
-         setSignupError('As senhas não coincidem.');
-         return;
-      }
-
-      setSignupLoading(true);
-
-      try {
-         const { error } = await signUp(signupEmail, signupPassword, signupName);
-
-         if (error) {
-            const errorMsg = (error as any)?.message || '';
-            if (errorMsg.includes('already registered')) {
-               setSignupError('Este email já está cadastrado.');
-            } else {
-               setSignupError('Erro ao criar conta. Tente novamente.');
-            }
-         } else {
-            setSignupSuccess('Conta criada com sucesso! Você já pode fazer login.');
-            setTimeout(() => {
-               setShowSignup(false);
-               setSignupSuccess('');
-               setEmail(signupEmail);
-               setPassword('');
-               setSuccess('Conta criada! Faça login com suas credenciais.');
-            }, 2000);
-         }
-      } catch {
-         setSignupError('Erro de conexão. Tente novamente.');
-      } finally {
-         setSignupLoading(false);
-      }
-   };
-
-   const openSignup = (e: React.MouseEvent) => {
-      e.preventDefault();
-      setShowSignup(true);
-      setSignupError('');
-      setSignupSuccess('');
-      setSignupName('');
-      setSignupEmail('');
-      setSignupPassword('');
-      setSignupConfirm('');
    };
 
    const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -166,13 +99,6 @@ const Login = () => {
                   <div className="mb-6 p-4 bg-accent-error/10 border-2 border-accent-error text-accent-error text-sm font-medium flex items-center gap-3">
                      <span className="material-symbols-outlined text-lg">error</span>
                      {error}
-                  </div>
-               )}
-
-               {success && (
-                  <div className="mb-6 p-4 bg-accent-success/10 border-2 border-accent-success text-accent-success text-sm font-medium flex items-center gap-3">
-                     <span className="material-symbols-outlined text-lg">check_circle</span>
-                     {success}
                   </div>
                )}
 
@@ -238,135 +164,12 @@ const Login = () => {
 
                <div className="mt-12 text-center border-t-2 border-secondary/10 pt-6">
                   <p className="text-sm text-secondary/60">
-                     Precisa de acesso? <a href="#" onClick={openSignup} className="text-primary font-bold hover:underline decoration-2 underline-offset-2">Solicitar Convite</a>
+                     Precisa de acesso? Fale com a administração do ateliê.
                   </p>
                </div>
             </div>
          </div>
 
-         {/* Signup Modal */}
-         {showSignup && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowSignup(false)}>
-               <div
-                  className="bg-background-light border-2 border-secondary shadow-hard w-full max-w-md p-8 relative animate-in"
-                  onClick={(e) => e.stopPropagation()}
-               >
-                  <button
-                     onClick={() => setShowSignup(false)}
-                     className="absolute top-4 right-4 text-secondary/50 hover:text-secondary transition-colors"
-                  >
-                     <span className="material-symbols-outlined">close</span>
-                  </button>
-
-                  <div className="flex flex-col items-center mb-8">
-                     <div className="h-10 w-10 bg-primary mb-3 flex items-center justify-center shadow-hard border-2 border-secondary">
-                        <span className="material-symbols-outlined text-white text-2xl">person_add</span>
-                     </div>
-                     <h2 className="font-display text-2xl font-bold tracking-tight text-secondary uppercase">Solicitar Acesso</h2>
-                     <p className="font-mono text-xs text-secondary/50 mt-1 tracking-wide uppercase">Crie sua conta</p>
-                  </div>
-
-                  {signupError && (
-                     <div className="mb-4 p-3 bg-accent-error/10 border-2 border-accent-error text-accent-error text-sm font-medium flex items-center gap-2">
-                        <span className="material-symbols-outlined text-lg">error</span>
-                        {signupError}
-                     </div>
-                  )}
-
-                  {signupSuccess && (
-                     <div className="mb-4 p-3 bg-accent-success/10 border-2 border-accent-success text-accent-success text-sm font-medium flex items-center gap-2">
-                        <span className="material-symbols-outlined text-lg">check_circle</span>
-                        {signupSuccess}
-                     </div>
-                  )}
-
-                  <form onSubmit={handleSignup} className="space-y-4">
-                     <div>
-                        <label className="block text-xs font-bold text-secondary mb-1.5 font-display uppercase tracking-wider">Nome</label>
-                        <input
-                           className="w-full bg-surface border-2 border-secondary p-3 text-base placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none"
-                           type="text"
-                           placeholder="Seu nome completo"
-                           value={signupName}
-                           onChange={(e) => setSignupName(e.target.value)}
-                           required
-                           disabled={signupLoading}
-                        />
-                     </div>
-
-                     <div>
-                        <label className="block text-xs font-bold text-secondary mb-1.5 font-display uppercase tracking-wider">E-mail</label>
-                        <input
-                           className="w-full bg-surface border-2 border-secondary p-3 text-base placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none"
-                           type="email"
-                           placeholder="seu@email.com"
-                           value={signupEmail}
-                           onChange={(e) => setSignupEmail(e.target.value)}
-                           required
-                           disabled={signupLoading}
-                        />
-                     </div>
-
-                     <div>
-                        <label className="block text-xs font-bold text-secondary mb-1.5 font-display uppercase tracking-wider">Senha</label>
-                        <input
-                           className="w-full bg-surface border-2 border-secondary p-3 text-base placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none"
-                           type="password"
-                           placeholder="Mínimo 6 caracteres"
-                           value={signupPassword}
-                           onChange={(e) => setSignupPassword(e.target.value)}
-                           required
-                           minLength={6}
-                           disabled={signupLoading}
-                        />
-                     </div>
-
-                     <div>
-                        <label className="block text-xs font-bold text-secondary mb-1.5 font-display uppercase tracking-wider">Confirmar Senha</label>
-                        <input
-                           className="w-full bg-surface border-2 border-secondary p-3 text-base placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-0 transition-colors rounded-none"
-                           type="password"
-                           placeholder="Repita a senha"
-                           value={signupConfirm}
-                           onChange={(e) => setSignupConfirm(e.target.value)}
-                           required
-                           minLength={6}
-                           disabled={signupLoading}
-                        />
-                     </div>
-
-                     <div className="pt-2">
-                        <button
-                           type="submit"
-                           disabled={signupLoading}
-                           className={`w-full bg-primary text-white font-display font-bold text-base py-3.5 px-6 border-2 border-secondary shadow-hard hover:shadow-hard-hover hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all uppercase tracking-widest flex items-center justify-center gap-3 ${signupLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
-                        >
-                           {signupLoading ? (
-                              <>
-                                 <span className="animate-spin material-symbols-outlined text-[18px]">progress_activity</span>
-                                 <span>Criando...</span>
-                              </>
-                           ) : (
-                              <>
-                                 <span>Criar Conta</span>
-                                 <span className="material-symbols-outlined">how_to_reg</span>
-                              </>
-                           )}
-                        </button>
-                     </div>
-                  </form>
-
-                  <div className="mt-6 text-center">
-                     <p className="text-xs text-secondary/50">
-                        Já tem conta?{' '}
-                        <button onClick={() => setShowSignup(false)} className="text-primary font-bold hover:underline decoration-2 underline-offset-2">
-                           Fazer Login
-                        </button>
-                     </p>
-                  </div>
-               </div>
-            </div>
-         )}
       </div>
    );
 };

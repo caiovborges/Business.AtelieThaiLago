@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "backup": "node scripts/backup.mjs",
+    "trocar-senha": "node scripts/trocar-senha.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.96.0",

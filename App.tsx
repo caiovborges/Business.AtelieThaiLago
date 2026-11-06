@@ -16,11 +16,47 @@ import LeadsBoard from './pages/LeadsBoard';
 import CalendarPage from './pages/CalendarPage';
 import Settings from './pages/Settings';
 
+const AccessBlocked = () => {
+  const { profile, profileError, refreshProfile, signOut } = useAuth();
+
+  const message = profileError && !profile
+    ? { icon: 'cloud_off', title: 'Não foi possível verificar seu acesso', text: 'Confira sua internet e tente novamente.' }
+    : profile?.role === 'denied'
+      ? { icon: 'block', title: 'Acesso negado', text: 'Sua conta não tem permissão para usar este sistema.' }
+      : { icon: 'hourglass_top', title: 'Aguardando aprovação', text: 'Sua conta ainda precisa ser aprovada pela administração do ateliê.' };
+
+  return (
+    <div className="flex min-h-screen w-full items-center justify-center bg-background-light p-6">
+      <div className="w-full max-w-md border-2 border-secondary bg-white p-8 text-center shadow-hard">
+        <span className="material-symbols-outlined text-5xl text-secondary/40">{message.icon}</span>
+        <h1 className="mt-4 font-display text-2xl font-bold text-secondary">{message.title}</h1>
+        <p className="mt-2 text-sm text-gray-500">{message.text}</p>
+        <div className="mt-6 flex flex-col gap-3">
+          {profileError && !profile && (
+            <button
+              onClick={() => refreshProfile()}
+              className="h-12 border-2 border-secondary bg-primary font-display text-sm font-bold uppercase tracking-wider text-white shadow-hard-sm"
+            >
+              Tentar novamente
+            </button>
+          )}
+          <button
+            onClick={() => signOut()}
+            className="h-12 border-2 border-secondary bg-white font-display text-sm font-bold uppercase tracking-wider text-secondary hover:bg-gray-50"
+          >
+            Sair
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ProtectedRoute = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, profileLoading, isApproved } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
 
-  if (loading) {
+  if (loading || profileLoading) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background-light">
         <div className="flex flex-col items-center gap-4">
@@ -35,6 +71,10 @@ const ProtectedRoute = () => {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (!isApproved) {
+    return <AccessBlocked />;
   }
 
   return (

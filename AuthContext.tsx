@@ -16,10 +16,11 @@ interface AuthContextType {
     session: Session | null;
     profile: UserProfile | null;
     loading: boolean;
+    profileLoading: boolean;
+    profileError: boolean;
     isAdmin: boolean;
     isApproved: boolean;
     signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-    signUp: (email: string, password: string, displayName?: string) => Promise<{ error: Error | null }>;
     signOut: () => Promise<void>;
     refreshProfile: () => Promise<void>;
 }
@@ -31,22 +32,35 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [session, setSession] = useState<Session | null>(null);
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
+    const [profileResolvedFor, setProfileResolvedFor] = useState<string | null>(null);
+    const [profileError, setProfileError] = useState(false);
 
     const fetchProfile = async (userId: string) => {
         try {
-            const { data } = await supabase
+            const { data, error } = await supabase
                 .from('user_profiles')
                 .select('*')
                 .eq('user_id', userId)
-                .single();
-            setProfile(data as UserProfile | null);
+                .abortSignal(AbortSignal.timeout(8000))
+                .maybeSingle();
+            if (error) {
+                setProfileError(true);
+            } else {
+                setProfile(data as UserProfile | null);
+                setProfileError(false);
+            }
         } catch {
-            setProfile(null);
+            setProfileError(true);
+        } finally {
+            setProfileResolvedFor(userId);
         }
     };
 
     const refreshProfile = async () => {
-        if (user) await fetchProfile(user.id);
+        if (!user) return;
+        setProfileError(false);
+        setProfileResolvedFor(null);
+        await fetchProfile(user.id);
     };
 
     useEffect(() => {
@@ -75,6 +89,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 fetchProfile(session.user.id);
             } else {
                 setProfile(null);
+                setProfileError(false);
+                setProfileResolvedFor(null);
             }
         });
 
@@ -89,29 +105,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return { error: error as Error | null };
     };
 
-    const signUp = async (email: string, password: string, displayName?: string) => {
-        const { error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-                data: { display_name: displayName || email }
-            }
-        });
-        return { error: error as Error | null };
-    };
-
     const signOut = async () => {
         await supabase.auth.signOut();
         setUser(null);
         setSession(null);
         setProfile(null);
+        setProfileError(false);
+        setProfileResolvedFor(null);
     };
 
     const isAdmin = profile?.role === 'admin';
     const isApproved = profile?.role === 'admin' || profile?.role === 'member';
+    const profileLoading = !!user && profileResolvedFor !== user.id;
 
     return (
-        <AuthContext.Provider value={{ user, session, profile, loading, isAdmin, isApproved, signIn, signUp, signOut, refreshProfile }}>
+        <AuthContext.Provider value={{ user, session, profile, loading, profileLoading, profileError, isAdmin, isApproved, signIn, signOut, refreshProfile }}>
             {children}
         </AuthContext.Provider>
     );

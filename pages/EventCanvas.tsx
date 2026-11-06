@@ -136,7 +136,13 @@ const EventCanvas = () => {
 
    const handleDeleteEvent = async (id: string) => {
       if (!confirm('Tem certeza que deseja excluir este evento?')) return;
-      await supabase.from('eventos').delete().eq('id', id);
+      const { error } = await supabase.from('eventos').delete().eq('id', id);
+      if (error) {
+         alert(error.code === '23503'
+            ? 'Este evento tem lançamentos financeiros e não pode ser excluído. Marque-o como Cancelado ou apague os lançamentos antes.'
+            : 'Erro ao excluir evento: ' + error.message);
+         return;
+      }
       await fetchEvents();
    };
 
