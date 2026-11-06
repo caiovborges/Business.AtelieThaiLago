@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
 import { formatarReais, parseValor } from '../valores';
+import { DIAS_APOS_ORCAMENTO, dataProximoContato } from '../leadContato';
+import { registrarContato } from '../leadAcoes';
 
 interface LeadOrcamento {
     id: string;
@@ -9,6 +11,7 @@ interface LeadOrcamento {
     status: string;
     event_date: string | null;
     services?: string[] | null;
+    convidados?: number | null;
 }
 
 interface OrcamentoModalProps {
@@ -52,6 +55,11 @@ const OPCOES_INICIAIS: Record<string, string[]> = {
 };
 
 export const CAMPOS_ORCAMENTO = 'id, status, created_at, tipo_servico, distancia_km, custo_deslocamento, incluir_deslocamento, observacoes, proposta_itens(id, descricao, quantidade, valor_unitario)';
+
+const AQUARELA = 'Aquarela dos Convidados';
+
+export const rotuloQuantidade = (servico: string | null, quantidade: number) =>
+    servico === AQUARELA ? `${quantidade} convidados` : `${quantidade} telas`;
 
 const paraTexto = (valor: number | null | undefined) => (valor ? String(valor).replace('.', ',') : '');
 export const itensComValor = (o: OrcamentoSalvo) => o.proposta_itens.filter(i => Number(i.valor_unitario) > 0);
@@ -101,7 +109,8 @@ const OrcamentoModal = ({ lead, editarId = null, onClose, onSalvo }: OrcamentoMo
         setDeslocamento(proprio ? paraTexto(proprio.custo_deslocamento) : '');
         setObservacoes(proprio?.observacoes || '');
         const qtd = proprio ? itensComValor(proprio)[0]?.quantidade : 0;
-        setTelas(qtd && qtd > 1 ? String(qtd) : '');
+        const convidadosLead = novoServico === AQUARELA && lead?.convidados ? String(lead.convidados) : '';
+        setTelas(qtd && qtd > 1 ? String(qtd) : convidadosLead);
         setOpcoes(opcoesDe(novoServico, proprio));
         if (proprio) {
             setOrigem(`Valores do último orçamento deste lead, de ${formatarData(proprio.created_at)}. Ajuste o que mudou.`);
@@ -271,12 +280,28 @@ const OrcamentoModal = ({ lead, editarId = null, onClose, onSalvo }: OrcamentoMo
             return;
         }
 
-        let mensagem = `Orçamento de ${lead.name} salvo.`;
-        if (lead.status === 'Novo Lead') {
-            const { error } = await supabase.from('leads').update({ status: 'Proposta Enviada' }).eq('id', lead.id);
-            mensagem = error
-                ? `Orçamento salvo, mas a etapa do lead não mudou: ${error.message}`
-                : `Orçamento de ${lead.name} salvo. Lead movido para Proposta Enviada.`;
+        // O proximo contato fica para uma semana depois do envio
+        const proximo = dataProximoContato(DIAS_APOS_ORCAMENTO);
+        let mensagem = `Orçamento de ${lead.name} salvo. Próximo contato em ${proximo.toLocaleDateString('pt-BR')}.`;
+        try {
+            const { data: pendente } = await supabase
+                .from('lead_followups')
+                .select('id')
+                .eq('lead_id', lead.id)
+                .eq('done', false)
+                .order('scheduled_at', { ascending: true })
+                .limit(1)
+                .maybeSingle();
+            await registrarContato({
+                leadId: lead.id,
+                followupId: pendente?.id ?? null,
+                resultado: 'orcamento_enviado',
+                proximo,
+                nota: 'Depois do orçamento',
+                status: lead.status === 'Novo Lead' ? 'Proposta Enviada' : null,
+            });
+        } catch (falha: any) {
+            mensagem = `Orçamento salvo, mas o próximo contato não foi agendado. ${falha.message}`;
         }
         setSalvando(false);
         onSalvo(mensagem);
@@ -347,7 +372,7 @@ const OrcamentoModal = ({ lead, editarId = null, onClose, onSalvo }: OrcamentoMo
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         {servico !== 'Outros' && (
                             <div>
-                                <label htmlFor="orcamento-telas" className={estiloRotulo}>Qtd. de telas</label>
+                                <label htmlFor="orcamento-telas" className={estiloRotulo}>{servico === AQUARELA ? 'Convidados' : 'Qtd. de telas'}</label>
                                 <input id="orcamento-telas" type="number" min="1" className={estiloInput} value={telas} onChange={e => setTelas(e.target.value)} />
                             </div>
                         )}
@@ -387,7 +412,7 @@ const OrcamentoModal = ({ lead, editarId = null, onClose, onSalvo }: OrcamentoMo
                         return (
                             <div key={o.id} className="border-2 border-secondary/20 p-3 text-sm">
                                 <p className="font-bold text-secondary flex flex-wrap justify-between gap-2">
-                                    <span>{o.tipo_servico || 'Serviço não informado'}{o.tipo_servico !== 'Outros' && qtd > 1 ? ` · ${qtd} telas` : ''}</span>
+                                    <span>{o.tipo_servico || 'Serviço não informado'}{o.tipo_servico !== 'Outros' && qtd > 1 ? ` · ${rotuloQuantidade(o.tipo_servico, qtd)}` : ''}</span>
                                     <span className="font-mono font-normal text-xs text-gray-500">{formatarData(o.created_at)}</span>
                                 </p>
                                 <ul className="mt-2 flex flex-col gap-1">

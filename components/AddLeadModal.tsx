@@ -28,11 +28,14 @@ export interface LeadFormData {
     cidade_id: number | null;
     location: string;
     notes: string;
+    convidados: number | null;
+    horario: string;
 }
 
 export interface EditingLead extends LeadFormData {
     id: string;
     created_at: string;
+    motivo_perda?: string | null;
     _estado_id?: number | null;
     lead_followups?: FollowupResumo[];
 }
@@ -81,6 +84,8 @@ const AddLeadModal = ({ isOpen, onClose, onSave, editingLead, ocultarFollowups =
     const [source, setSource] = useState('');
     const [location, setLocation] = useState('');
     const [notes, setNotes] = useState('');
+    const [convidados, setConvidados] = useState('');
+    const [horario, setHorario] = useState('');
 
     // Location State
     const [estados, setEstados] = useState<Estado[]>([]);
@@ -133,6 +138,8 @@ const AddLeadModal = ({ isOpen, onClose, onSave, editingLead, ocultarFollowups =
             setSource(editingLead.source || '');
             setLocation(editingLead.location || '');
             setNotes(editingLead.notes || '');
+            setConvidados(editingLead.convidados ? String(editingLead.convidados) : '');
+            setHorario(editingLead.horario || '');
             setSelectedCidadeId(editingLead.cidade_id);
             if (editingLead._estado_id) setSelectedEstadoId(editingLead._estado_id);
         } else if (isOpen && !editingLead) {
@@ -140,6 +147,7 @@ const AddLeadModal = ({ isOpen, onClose, onSave, editingLead, ocultarFollowups =
             setName(''); setPartnerName(''); setEmail(''); setPhone('');
             setInstagram(''); setStatus('Novo Lead'); setEventDate('');
             setServices([]); setSource(''); setLocation(''); setNotes('');
+            setConvidados(''); setHorario('');
             setSelectedEstadoId(null); setSelectedCidadeId(null);
         }
     }, [isOpen, editingLead]);
@@ -193,7 +201,9 @@ const AddLeadModal = ({ isOpen, onClose, onSave, editingLead, ocultarFollowups =
             await onSave({
                 name, partner_name: partnerName, email, phone, instagram,
                 status, event_date: eventDate, services, source,
-                cidade_id: selectedCidadeId, location, notes
+                cidade_id: selectedCidadeId, location, notes,
+                convidados: parseInt(convidados, 10) || null,
+                horario: horario.trim(),
             });
             onClose();
         } catch (err: any) {
@@ -275,6 +285,16 @@ const AddLeadModal = ({ isOpen, onClose, onSave, editingLead, ocultarFollowups =
 
                     {showDetails && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 p-4 border-2 border-secondary/20 bg-background-light">
+                            <div>
+                                <label htmlFor="lead-convidados" className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Convidados</label>
+                                <input id="lead-convidados" type="number" min="0" className="w-full bg-white border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none"
+                                    value={convidados} onChange={e => setConvidados(e.target.value)} />
+                            </div>
+                            <div>
+                                <label htmlFor="lead-horario" className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Horário</label>
+                                <input id="lead-horario" className="w-full bg-white border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none"
+                                    value={horario} onChange={e => setHorario(e.target.value)} placeholder="Ex: 17h às 00h" />
+                            </div>
                             <div>
                                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Outro nome</label>
                                 <input className="w-full bg-white border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none"

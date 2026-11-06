@@ -4,9 +4,9 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
 import AddLeadModal, { EditingLead, LeadFormData, PIPELINE_STAGES } from '../components/AddLeadModal';
 import LeadFollowups from '../components/LeadFollowups';
-import OrcamentoModal, { CAMPOS_ORCAMENTO, OrcamentoSalvo, itensComValor } from '../components/OrcamentoModal';
-import { FollowupResumo, linkWhatsApp, mensagemContato } from '../leadContato';
-import { marcarPerdido, registrarContatoFeito } from '../leadAcoes';
+import OrcamentoModal, { CAMPOS_ORCAMENTO, OrcamentoSalvo, itensComValor, rotuloQuantidade } from '../components/OrcamentoModal';
+import ResultadoContatoModal, { AlvoResultado } from '../components/ResultadoContatoModal';
+import { ChaveMensagem, FollowupResumo, LIMITE_TENTATIVAS, MENSAGENS, ROTULO_RESULTADO, dataDoContato, feitosEmOrdem, linkWhatsApp, montarMensagem, resumoContato, temOrcamentoLead } from '../leadContato';
 import FecharLeadModal from '../components/FecharLeadModal';
 import { abrirContrato, enviarContrato, removerContrato } from '../contratos';
 import { formatarReais } from '../valores';
@@ -52,7 +52,7 @@ const CartaoOrcamento = ({ orcamento }: { orcamento: OrcamentoSalvo }) => {
     return (
         <div className="flex flex-col gap-2">
             <p className="text-sm font-bold text-secondary flex flex-wrap justify-between gap-2">
-                <span>{orcamento.tipo_servico || 'Serviço não informado'}{orcamento.tipo_servico !== 'Outros' && telas > 1 ? ` · ${telas} telas` : ''}</span>
+                <span>{orcamento.tipo_servico || 'Serviço não informado'}{orcamento.tipo_servico !== 'Outros' && telas > 1 ? ` · ${rotuloQuantidade(orcamento.tipo_servico, telas)}` : ''}</span>
                 <span className="font-mono font-normal text-xs text-gray-500">{dataCurta(orcamento.created_at)}</span>
             </p>
             <ul className="flex flex-col divide-y divide-gray-100">
@@ -91,12 +91,14 @@ const LeadProfile = () => {
     const [versaoFollowups, setVersaoFollowups] = useState(0);
     const [evento, setEvento] = useState<EventoFechado | null>(null);
     const [fechando, setFechando] = useState(false);
+    const [alvoResultado, setAlvoResultado] = useState<AlvoResultado<LeadCompleto> | null>(null);
+    const [mensagemEscolhida, setMensagemEscolhida] = useState<ChaveMensagem | ''>('');
 
     const carregar = async () => {
         if (!id) return;
         const [leadRes, followupsRes, orcamentosRes, eventoRes] = await Promise.all([
             supabase.from('leads').select('*, cidades(nome, estado_id, estados(sigla))').eq('id', id).maybeSingle(),
-            supabase.from('lead_followups').select('id, scheduled_at, done, type, notes').eq('lead_id', id).order('scheduled_at', { ascending: true }),
+            supabase.from('lead_followups').select('id, scheduled_at, done, type, notes, resultado, feito_em').eq('lead_id', id).order('scheduled_at', { ascending: true }),
             supabase.from('propostas').select(CAMPOS_ORCAMENTO).eq('lead_id', id).order('created_at', { ascending: false }),
             supabase.from('eventos').select('id, status, contrato_url, plano_fechado, valor_previsto').eq('lead_id', id).maybeSingle(),
         ]);
@@ -140,14 +142,24 @@ const LeadProfile = () => {
 
     const pendentes = followups.filter(f => !f.done);
     const proximo = pendentes[0] ?? null;
-    const feitos = followups.filter(f => f.done);
+    const feitos = feitosEmOrdem(followups);
     const ultimoContato = feitos[feitos.length - 1] ?? null;
     const atrasado = !!proximo && new Date(proximo.scheduled_at).getTime() < new Date().setHours(0, 0, 0, 0);
     const perdido = lead.status === 'Perdido';
     const indiceEtapa = ETAPAS.indexOf(lead.status);
-    const whatsapp = linkWhatsApp(lead.phone, mensagemContato(lead, feitos.length));
-    const atual = orcamentos.find(o => itensComValor(o).length > 0) ?? null;
-    const anteriores = orcamentos.filter(o => o !== atual && itensComValor(o).length > 0);
+    const comValores = orcamentos.filter(o => itensComValor(o).length > 0);
+    // Vale o mais recente de cada servico: um casal pode receber orcamentos em paralelo
+    const servicosVistos = new Set<string>();
+    const atuais = comValores.filter(o => {
+        const chave = o.tipo_servico || o.id;
+        if (servicosVistos.has(chave)) return false;
+        servicosVistos.add(chave);
+        return true;
+    });
+    const anteriores = comValores.filter(o => !atuais.includes(o));
+    const resumo = resumoContato({ ...lead, lead_followups: followups }, temOrcamentoLead(lead.status, comValores.length > 0));
+    const chaveMensagem = mensagemEscolhida || resumo.mensagem;
+    const whatsapp = linkWhatsApp(lead.phone, montarMensagem(chaveMensagem, lead));
     const cidade = lead.cidades ? `${lead.cidades.nome}${lead.cidades.estados ? ` - ${lead.cidades.estados.sigla}` : ''}` : '';
 
     const executar = async (acao: () => Promise<string>) => {
@@ -221,7 +233,7 @@ const LeadProfile = () => {
                         <button
                             type="button"
                             disabled={ocupado || perdido || lead.status === 'Fechado'}
-                            onClick={() => executar(() => registrarContatoFeito(user!.id, { lead, followup: proximo, contatosFeitos: feitos.length }))}
+                            onClick={() => setAlvoResultado({ item: resumo })}
                             className={`${botao} bg-primary text-white`}
                         >
                             <span className="material-symbols-outlined text-[18px]">check</span>
@@ -321,14 +333,33 @@ const LeadProfile = () => {
                             ) : 'Nenhum agendado'}
                         </Dado>
                         <Dado rotulo="Contatos feitos">{String(feitos.length)}</Dado>
-                        <Dado rotulo="Último contato agendado">{ultimoContato ? dataCurta(ultimoContato.scheduled_at) : 'Nenhum'}</Dado>
+                        <Dado rotulo="Último contato">{ultimoContato ? dataCurta(dataDoContato(ultimoContato)) : 'Nenhum'}</Dado>
+                        <Dado rotulo="Último resultado">{resumo.ultimoResultado ? ROTULO_RESULTADO[resumo.ultimoResultado] : 'Não registrado'}</Dado>
+                        <Dado rotulo="Tentativas sem resposta">{`${resumo.tentativas} de ${LIMITE_TENTATIVAS}`}</Dado>
+                        {perdido && <Dado rotulo="Motivo da perda">{lead.motivo_perda}</Dado>}
                     </dl>
+
+                    {!perdido && !evento && (
+                        <div>
+                            <label htmlFor="perfil-mensagem" className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Mensagem do botão WhatsApp</label>
+                            <select
+                                id="perfil-mensagem"
+                                className="w-full sm:w-auto bg-white border-2 border-secondary p-2 font-mono text-sm focus:border-primary outline-none"
+                                value={chaveMensagem}
+                                onChange={e => setMensagemEscolhida(e.target.value as ChaveMensagem)}
+                            >
+                                {(Object.keys(MENSAGENS) as ChaveMensagem[]).map(chave => (
+                                    <option key={chave} value={chave}>{MENSAGENS[chave].titulo}{chave === resumo.mensagem ? ' (sugerida)' : ''}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
 
                     {!perdido && (
                         <button
                             type="button"
                             disabled={ocupado}
-                            onClick={() => { if (window.confirm(`Marcar ${lead.name} como Perdido?`)) executar(() => marcarPerdido(lead, proximo?.id ?? null)); }}
+                            onClick={() => setAlvoResultado({ item: resumo, inicial: 'desistiu' })}
                             className="self-start text-xs font-bold uppercase tracking-wider text-gray-500 hover:text-accent-error transition-colors disabled:opacity-50"
                         >
                             Marcar como perdido
@@ -342,12 +373,6 @@ const LeadProfile = () => {
                     titulo="Orçamento enviado"
                     acao={
                         <div className="flex flex-wrap gap-2">
-                            {atual && (
-                                <button type="button" onClick={() => setModalOrcamento({ editarId: atual.id })} className={`${botao} bg-primary text-white`}>
-                                    <span className="material-symbols-outlined text-[18px]">edit</span>
-                                    Editar
-                                </button>
-                            )}
                             <button type="button" onClick={() => setModalOrcamento({ editarId: null })} className={`${botao} bg-white text-secondary hover:bg-gray-50`}>
                                 <span className="material-symbols-outlined text-[18px]">add</span>
                                 Novo orçamento
@@ -355,7 +380,16 @@ const LeadProfile = () => {
                         </div>
                     }
                 >
-                    {atual ? <CartaoOrcamento orcamento={atual} /> : <p className="text-sm text-gray-500">Nenhum orçamento registrado.</p>}
+                    {atuais.length === 0 && <p className="text-sm text-gray-500">Nenhum orçamento registrado.</p>}
+                    {atuais.map(o => (
+                        <div key={o.id} className="flex flex-col gap-2 border-t-2 border-secondary/10 pt-3 first:border-t-0 first:pt-0">
+                            <CartaoOrcamento orcamento={o} />
+                            <button type="button" onClick={() => setModalOrcamento({ editarId: o.id })} className={`${botao} self-start bg-primary text-white`}>
+                                <span className="material-symbols-outlined text-[18px]">edit</span>
+                                Editar
+                            </button>
+                        </div>
+                    ))}
                     {anteriores.length > 0 && (
                         <details className="border-t-2 border-secondary/10 pt-3">
                             <summary className="cursor-pointer text-xs font-bold uppercase tracking-wider text-gray-500">
@@ -382,6 +416,8 @@ const LeadProfile = () => {
                         <Dado rotulo="E-mail">{lead.email}</Dado>
                         <Dado rotulo="Data do casamento">{dataEvento(lead.event_date)}</Dado>
                         <Dado rotulo="Local">{lead.location}</Dado>
+                        <Dado rotulo="Convidados">{lead.convidados ? String(lead.convidados) : ''}</Dado>
+                        <Dado rotulo="Horário">{lead.horario}</Dado>
                         <Dado rotulo="Cidade">{cidade}</Dado>
                         <Dado rotulo="Origem">{lead.source}</Dado>
                         <Dado rotulo="Serviços de interesse">{(lead.services || []).join(', ')}</Dado>
@@ -404,6 +440,12 @@ const LeadProfile = () => {
                 editingLead={lead}
                 ocultarFollowups
             />
+            <ResultadoContatoModal<LeadCompleto>
+                alvo={alvoResultado}
+                onClose={() => setAlvoResultado(null)}
+                onSalvo={(mensagem) => { setAviso(mensagem); setErro(''); setMensagemEscolhida(''); carregar(); setVersaoFollowups(v => v + 1); }}
+                onQuerFechar={() => setFechando(true)}
+            />
             <FecharLeadModal
                 lead={fechando ? lead : null}
                 onClose={() => setFechando(false)}
@@ -413,7 +455,7 @@ const LeadProfile = () => {
                 lead={modalOrcamento ? lead : null}
                 editarId={modalOrcamento?.editarId ?? null}
                 onClose={() => setModalOrcamento(null)}
-                onSalvo={(mensagem) => { setAviso(mensagem); carregar(); }}
+                onSalvo={(mensagem) => { setAviso(mensagem); carregar(); setVersaoFollowups(v => v + 1); }}
             />
         </div>
     );

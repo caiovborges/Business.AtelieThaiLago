@@ -6,8 +6,8 @@ import AddLeadModal, { LeadFormData, EditingLead, PIPELINE_STAGES } from '../com
 import FalarHoje from '../components/FalarHoje';
 import OrcamentoModal from '../components/OrcamentoModal';
 import FecharLeadModal from '../components/FecharLeadModal';
-import { ItemContato, linkWhatsApp, mensagemContato } from '../leadContato';
-import { marcarPerdido, registrarContatoFeito } from '../leadAcoes';
+import ResultadoContatoModal, { AlvoResultado } from '../components/ResultadoContatoModal';
+import { linkWhatsApp, montarMensagem, resumoContato, temOrcamentoLead } from '../leadContato';
 
 // Status colors mapping
 const STATUS_COLORS: Record<string, string> = {
@@ -27,10 +27,10 @@ const LeadsBoard = () => {
     const [leadsWithProposals, setLeadsWithProposals] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [sortOption, setSortOption] = useState<string>('followup_desc');
+    const [sortOption, setSortOption] = useState<string>('prioridade');
     const [viewMode, setViewMode] = useState<'hoje' | 'funnel' | 'lost' | 'closed'>('hoje');
     const [erroLeads, setErroLeads] = useState('');
-    const [leadOcupado, setLeadOcupado] = useState<string | null>(null);
+    const [alvoResultado, setAlvoResultado] = useState<AlvoResultado<EditingLead> | null>(null);
     const [aviso, setAviso] = useState('');
     const [leadOrcamento, setLeadOrcamento] = useState<EditingLead | null>(null);
     const [leadFechar, setLeadFechar] = useState<EditingLead | null>(null);
@@ -44,7 +44,7 @@ const LeadsBoard = () => {
         setLoading(true);
         const { data, error } = await supabase
             .from('leads')
-            .select('*, lead_followups(id, scheduled_at, done, type, notes)')
+            .select('*, lead_followups(id, scheduled_at, done, type, notes, resultado, feito_em)')
             .order('created_at', { ascending: false });
 
         const { data: propsData } = await supabase
@@ -125,37 +125,7 @@ const LeadsBoard = () => {
         }
     };
 
-    const handleMarkAsLost = async (lead: EditingLead) => {
-        if (!window.confirm(`Marcar ${lead.name} como Perdido?`)) return;
-
-        const { error } = await supabase
-            .from('leads')
-            .update({ status: 'Perdido' })
-            .eq('id', lead.id);
-
-        if (error) {
-            alert('Erro ao atualizar status');
-        } else {
-            fetchLeads();
-        }
-    };
-
-    const executarAcao = async (leadId: string, acao: () => Promise<string>) => {
-        setLeadOcupado(leadId);
-        setAviso('');
-        try {
-            setAviso(await acao());
-        } catch (e: any) {
-            alert(e.message);
-        }
-        await fetchLeads();
-        setLeadOcupado(null);
-    };
-
-    const handleContatoFeito = (item: ItemContato<EditingLead>) => {
-        if (!user) return;
-        executarAcao(item.lead.id, () => registrarContatoFeito(user.id, item));
-    };
+    const temOrcamento = (lead: EditingLead) => temOrcamentoLead(lead.status, leadsWithProposals.has(lead.id));
 
     const handleDragStart = (e: React.DragEvent, leadId: string) => {
         e.dataTransfer.setData('leadId', leadId);
@@ -326,6 +296,7 @@ const LeadsBoard = () => {
                                 onChange={(e) => setSortOption(e.target.value)}
                                 className="w-full appearance-none pl-4 pr-10 py-2 border-2 border-secondary rounded-sm font-mono text-sm bg-white focus:border-primary outline-none focus:shadow-hard-sm transition-all cursor-pointer"
                             >
+                                <option value="prioridade">Prioridade</option>
                                 <option value="created_at_desc">Criado em (Recentes)</option>
                                 <option value="event_date_asc">Data do Evento (Próximos)</option>
                                 <option value="event_date_desc">Data do Evento (Distantes)</option>
@@ -356,15 +327,11 @@ const LeadsBoard = () => {
                         ordem={sortOption}
                         loading={loading}
                         erro={erroLeads}
-                        ocupado={leadOcupado}
+                        temOrcamento={temOrcamento}
                         onAbrir={(lead) => navigate(`/leads/${lead.id}`)}
                         onOrcamento={setLeadOrcamento}
-                        onFeito={handleContatoFeito}
-                        onPerdido={(lead) => {
-                            if (window.confirm(`Marcar ${lead.name} como Perdido?`)) {
-                                executarAcao(lead.id, () => marcarPerdido(lead, lead.lead_followups?.find(fu => !fu.done)?.id ?? null));
-                            }
-                        }}
+                        onFeito={(item) => setAlvoResultado({ item })}
+                        onPerdido={(item) => setAlvoResultado({ item, inicial: 'desistiu' })}
                     />
                 ) : (viewMode === 'lost' || viewMode === 'closed') ? (
                     /* LIST/TABLE VIEW (Combined logic for Lost and Closed) */
@@ -535,8 +502,8 @@ const LeadsBoard = () => {
                                                     <span className="material-symbols-outlined text-[16px]">request_quote</span>
                                                 </button>
                                                 {(() => {
-                                                    const contatos = (lead.lead_followups || []).filter(fu => fu.done).length;
-                                                    const whatsapp = linkWhatsApp(lead.phone, mensagemContato(lead, contatos));
+                                                    const resumo = resumoContato(lead, temOrcamento(lead));
+                                                    const whatsapp = linkWhatsApp(lead.phone, montarMensagem(resumo.mensagem, lead));
                                                     return whatsapp && (
                                                         <a
                                                             href={whatsapp}
@@ -559,7 +526,7 @@ const LeadsBoard = () => {
                                                     <span className="text-[10px] font-bold uppercase tracking-wide">Fechar</span>
                                                 </button>
                                                 <button
-                                                    onClick={(e) => { e.stopPropagation(); handleMarkAsLost(lead); }}
+                                                    onClick={(e) => { e.stopPropagation(); setAlvoResultado({ item: resumoContato(lead, temOrcamento(lead)), inicial: 'desistiu' }); }}
                                                     className="flex-1 py-1.5 bg-red-50 text-red-700 border border-red-200 rounded-sm flex items-center justify-center gap-1 hover:bg-red-100 hover:shadow-sm transition-all"
                                                     title="Marcar como Perdido"
                                                 >
@@ -582,6 +549,13 @@ const LeadsBoard = () => {
                     </div>
                 )}
             </div>
+
+            <ResultadoContatoModal<EditingLead>
+                alvo={alvoResultado}
+                onClose={() => setAlvoResultado(null)}
+                onSalvo={(mensagem) => { setAviso(mensagem); fetchLeads(); }}
+                onQuerFechar={setLeadFechar}
+            />
 
             <FecharLeadModal
                 lead={leadFechar}

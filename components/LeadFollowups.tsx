@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
+import { ROTULO_RESULTADO } from '../leadContato';
 
 interface FollowUp {
     id: string;
@@ -8,6 +9,7 @@ interface FollowUp {
     scheduled_at: string;
     notes: string;
     done: boolean;
+    resultado?: string | null;
 }
 
 interface LeadFollowupsProps {
@@ -81,7 +83,7 @@ const LeadFollowups = ({ leadId, onChange }: LeadFollowupsProps) => {
         // Optimistic update
         setFollowups(prev => prev.map(f => f.id === id ? { ...f, done: !currentStatus } : f));
 
-        await supabase.from('lead_followups').update({ done: !currentStatus }).eq('id', id);
+        await supabase.from('lead_followups').update({ done: !currentStatus, feito_em: currentStatus ? null : new Date().toISOString() }).eq('id', id);
         onChange?.();
     };
 
@@ -209,6 +211,7 @@ const FollowUpItem = ({ item, onToggle, onDelete }: { item: FollowUp, onToggle: 
                     </span>
                     {isLate && <span className="text-[10px] bg-red-100 text-red-600 px-1 rounded font-bold uppercase">Atrasado</span>}
                 </div>
+                {item.resultado && <p className="text-xs font-bold text-secondary">{ROTULO_RESULTADO[item.resultado] || item.resultado}</p>}
                 {item.notes && <p className={`text-sm ${item.done ? 'text-gray-400' : 'text-gray-600'}`}>{item.notes}</p>}
             </div>
 

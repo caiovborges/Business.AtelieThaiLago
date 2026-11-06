@@ -1,23 +1,26 @@
 import React from 'react';
-import { ItemContato, LeadContato, linkWhatsApp, mensagemContato, ordenarContatos, organizarContatos } from '../leadContato';
+import {
+    ItemContato, LIMITE_TENTATIVAS, LeadContato, MENSAGENS, contatoEncerra, linkWhatsApp, montarMensagem,
+    ordenarContatos, organizarContatos, prioridadeContato,
+} from '../leadContato';
 
 interface FalarHojeProps<L extends LeadContato> {
     leads: L[];
     ordem: string;
     loading: boolean;
     erro: string;
-    ocupado: string | null;
+    temOrcamento: (lead: L) => boolean;
     onAbrir: (lead: L) => void;
     onOrcamento: (lead: L) => void;
     onFeito: (item: ItemContato<L>) => void;
-    onPerdido: (lead: L) => void;
+    onPerdido: (item: ItemContato<L>) => void;
 }
 
 const formatarData = (valor: string) =>
     new Date(valor).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 
-function FalarHoje<L extends LeadContato>({ leads, ordem, loading, erro, ocupado, onAbrir, onOrcamento, onFeito, onPerdido }: FalarHojeProps<L>) {
-    const { hoje, atrasados, semContato, agendadosDepois, casamentoPassado } = organizarContatos(leads);
+function FalarHoje<L extends LeadContato>({ leads, ordem, loading, erro, temOrcamento, onAbrir, onOrcamento, onFeito, onPerdido }: FalarHojeProps<L>) {
+    const { hoje, atrasados, semContato, agendadosDepois, casamentoPassado } = organizarContatos(leads, new Date(), temOrcamento);
 
     if (erro) {
         return (
@@ -37,9 +40,9 @@ function FalarHoje<L extends LeadContato>({ leads, ordem, loading, erro, ocupado
     }
 
     const renderItem = (item: ItemContato<L>) => {
-        const { lead, followup, contatosFeitos } = item;
-        const whatsapp = linkWhatsApp(lead.phone, mensagemContato(lead, contatosFeitos));
-        const emAndamento = ocupado === lead.id;
+        const { lead, followup, contatosFeitos, tentativas, mensagem } = item;
+        const whatsapp = linkWhatsApp(lead.phone, montarMensagem(mensagem, lead));
+        const { motivo } = prioridadeContato(item);
         const dataEvento = lead.event_date
             ? new Date(lead.event_date + 'T12:00:00').toLocaleDateString('pt-BR')
             : 'Data a definir';
@@ -47,7 +50,12 @@ function FalarHoje<L extends LeadContato>({ leads, ordem, loading, erro, ocupado
         return (
             <div key={lead.id} className="bg-white border-2 border-secondary p-4 flex flex-col lg:flex-row lg:items-center gap-3 rounded-sm">
                 <button type="button" onClick={() => onAbrir(lead)} className="flex-1 min-w-0 text-left">
-                    <p className="font-display text-lg font-bold text-secondary truncate">{lead.name}</p>
+                    <p className="font-display text-lg font-bold text-secondary truncate">
+                        {lead.name}
+                        {motivo && (
+                            <span className="ml-2 align-middle px-1.5 py-0.5 bg-primary/10 text-primary border border-primary/30 text-[10px] font-mono font-bold uppercase">{motivo}</span>
+                        )}
+                    </p>
                     <p className="text-xs text-gray-600 flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
                         <span className="flex items-center gap-1">
                             <span className="material-symbols-outlined text-[14px] text-gray-400">event</span>
@@ -63,9 +71,17 @@ function FalarHoje<L extends LeadContato>({ leads, ordem, loading, erro, ocupado
                         <span className="font-mono text-gray-500">
                             {contatosFeitos === 0 ? 'Nenhum contato feito' : `${contatosFeitos} contato${contatosFeitos > 1 ? 's' : ''} feito${contatosFeitos > 1 ? 's' : ''}`}
                         </span>
+                        {tentativas > 0 && (
+                            <span className={`font-mono font-bold ${contatoEncerra(tentativas) ? 'text-accent-error' : 'text-gray-700'}`}>
+                                {tentativas} de {LIMITE_TENTATIVAS} sem resposta
+                            </span>
+                        )}
                         {followup && (
                             <span className="font-mono font-bold text-orange-600">Agendado para {formatarData(followup.scheduled_at)}</span>
                         )}
+                    </p>
+                    <p className="text-xs text-secondary mt-1">
+                        <span className="font-bold">Mensagem:</span> {MENSAGENS[mensagem].titulo}
                     </p>
                     {followup?.notes && <p className="text-xs text-gray-500 mt-1 truncate">{followup.notes}</p>}
                 </button>
@@ -101,17 +117,15 @@ function FalarHoje<L extends LeadContato>({ leads, ordem, loading, erro, ocupado
                     <button
                         type="button"
                         onClick={() => onFeito(item)}
-                        disabled={emAndamento}
-                        className="h-11 px-3 bg-primary text-white border-2 border-secondary rounded-sm flex items-center justify-center gap-1 text-xs font-bold uppercase disabled:opacity-50"
+                        className="h-11 px-3 bg-primary text-white border-2 border-secondary rounded-sm flex items-center justify-center gap-1 text-xs font-bold uppercase"
                     >
                         <span className="material-symbols-outlined text-[18px]">check</span>
                         Feito
                     </button>
                     <button
                         type="button"
-                        onClick={() => onPerdido(lead)}
-                        disabled={emAndamento}
-                        className="h-11 px-3 bg-white text-gray-600 border-2 border-gray-300 rounded-sm text-xs font-bold uppercase hover:border-accent-error hover:text-accent-error transition-colors disabled:opacity-50"
+                        onClick={() => onPerdido(item)}
+                        className="h-11 px-3 bg-white text-gray-600 border-2 border-gray-300 rounded-sm text-xs font-bold uppercase hover:border-accent-error hover:text-accent-error transition-colors"
                     >
                         Perdido
                     </button>

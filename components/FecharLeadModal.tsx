@@ -23,7 +23,7 @@ const OUTRO = 'outro';
 
 const FecharLeadModal = ({ lead, onClose, onFechado }: FecharLeadModalProps) => {
     const { user } = useAuth();
-    const [orcamento, setOrcamento] = useState<OrcamentoSalvo | null>(null);
+    const [orcamentos, setOrcamentos] = useState<OrcamentoSalvo[]>([]);
     const [eventosNaData, setEventosNaData] = useState<string[]>([]);
     const [escolha, setEscolha] = useState(OUTRO);
     const [plano, setPlano] = useState('');
@@ -41,7 +41,7 @@ const FecharLeadModal = ({ lead, onClose, onFechado }: FecharLeadModalProps) => 
         if (!leadId) return;
         let atual = true;
         setErro('');
-        setOrcamento(null);
+        setOrcamentos([]);
         setEscolha(OUTRO);
         setPlano('');
         setValor('');
@@ -62,11 +62,15 @@ const FecharLeadModal = ({ lead, onClose, onFechado }: FecharLeadModalProps) => 
                 setErro('Não foi possível carregar o orçamento: ' + orcamentos.error.message);
                 return;
             }
-            const ultimo = ((orcamentos.data || []) as unknown as OrcamentoSalvo[]).find(o => itensComValor(o).length > 0) || null;
-            setOrcamento(ultimo);
-            if (ultimo?.incluir_deslocamento && Number(ultimo.custo_deslocamento) > 0) {
-                setDeslocamento(paraTexto(Number(ultimo.custo_deslocamento)));
-            }
+            // Vale o orcamento mais recente de cada servico
+            const lista = ((orcamentos.data || []) as unknown as OrcamentoSalvo[]).filter(o => itensComValor(o).length > 0);
+            const vistos = new Set<string>();
+            setOrcamentos(lista.filter(o => {
+                const chave = o.tipo_servico || o.id;
+                if (vistos.has(chave)) return false;
+                vistos.add(chave);
+                return true;
+            }));
             setEventosNaData(((eventos.data || []) as { nome: string }[]).map(e => e.nome));
         });
         return () => { atual = false; };
@@ -74,19 +78,24 @@ const FecharLeadModal = ({ lead, onClose, onFechado }: FecharLeadModalProps) => 
 
     if (!lead) return null;
 
-    const opcoes = orcamento ? itensComValor(orcamento) : [];
-    const deslocamentoOrcamento = orcamento?.incluir_deslocamento ? Number(orcamento.custo_deslocamento) || 0 : 0;
-    const servico = orcamento?.tipo_servico || (lead.services || [])[0] || '';
+    const opcoes = orcamentos.flatMap(o => itensComValor(o).map(item => ({ ...item, orcamento: o })));
+    const escolhida = opcoes.find(o => o.id === escolha) || null;
+    const custoDe = (o: OrcamentoSalvo) => (o.incluir_deslocamento ? Number(o.custo_deslocamento) || 0 : 0);
+    const deslocamentoOrcamento = escolhida ? custoDe(escolhida.orcamento) : 0;
+    const servico = escolhida?.orcamento.tipo_servico || orcamentos[0]?.tipo_servico || (lead.services || [])[0] || '';
 
     const escolher = (id: string) => {
         setEscolha(id);
         const opcao = opcoes.find(o => o.id === id);
         if (opcao) {
+            const custo = custoDe(opcao.orcamento);
             setPlano(opcao.descricao);
-            setValor(paraTexto(Number(opcao.valor_unitario) + deslocamentoOrcamento));
+            setValor(paraTexto(Number(opcao.valor_unitario) + custo));
+            setDeslocamento(custo > 0 ? paraTexto(custo) : '');
         } else {
             setPlano('');
             setValor('');
+            setDeslocamento('');
         }
     };
 
@@ -116,7 +125,7 @@ const FecharLeadModal = ({ lead, onClose, onFechado }: FecharLeadModalProps) => 
             p_plano: plano.trim() || null,
             p_servico: servico || null,
             p_custo_deslocamento: parseValor(deslocamento),
-            p_proposta_id: escolha !== OUTRO ? orcamento?.id ?? null : null,
+            p_proposta_id: escolhida?.orcamento.id ?? null,
             p_contrato: caminho,
         });
 
@@ -166,7 +175,10 @@ const FecharLeadModal = ({ lead, onClose, onFechado }: FecharLeadModalProps) => 
                                 <label key={o.id} className={`flex items-center justify-between gap-3 p-3 border-2 cursor-pointer ${escolha === o.id ? 'border-primary bg-primary/5' : 'border-gray-200'}`}>
                                     <span className="flex items-center gap-2 min-w-0">
                                         <input type="radio" name="opcao" checked={escolha === o.id} onChange={() => escolher(o.id)} className="shrink-0" />
-                                        <span className="text-sm text-secondary break-words">{o.descricao}</span>
+                                        <span className="text-sm text-secondary break-words">
+                                            {o.descricao}
+                                            {orcamentos.length > 1 && <span className="block text-xs text-gray-500">{o.orcamento.tipo_servico}</span>}
+                                        </span>
                                     </span>
                                     <span className="font-mono text-sm font-bold shrink-0">{formatarReais(Number(o.valor_unitario))}</span>
                                 </label>

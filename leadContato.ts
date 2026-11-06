@@ -1,4 +1,4 @@
-// Regras do atendimento: WhatsApp, proximo contato e lista "Falar hoje".
+// Regras do atendimento: mensagens, tentativas, proximo contato e prioridade.
 
 export interface FollowupResumo {
     id: string;
@@ -6,6 +6,8 @@ export interface FollowupResumo {
     done: boolean;
     type: string;
     notes?: string | null;
+    resultado?: string | null;
+    feito_em?: string | null;
 }
 
 export interface LeadContato {
@@ -19,17 +21,94 @@ export interface LeadContato {
     lead_followups?: FollowupResumo[];
 }
 
+export type ChaveMensagem =
+    | 'primeiro' | 'continuidade' | 'retomar' | 'encerramento'
+    | 'posOrcamento' | 'caro' | 'lembrete' | 'reuniao' | 'confirmarReuniao';
+
 export interface ItemContato<L extends LeadContato = LeadContato> {
     lead: L;
     followup: FollowupResumo | null;
     contatosFeitos: number;
+    tentativas: number;
+    ultimoResultado: string | null;
+    temOrcamento: boolean;
+    mensagem: ChaveMensagem;
 }
 
 export const ETAPAS_ATIVAS = ['Novo Lead', 'Proposta Enviada', 'Em Negociação'];
 
-// Dias ate o proximo contato, depois do 1o, 2o e 3o contatos feitos.
-export const INTERVALOS_CONTATO = [2, 5, 7];
-export const DIAS_APOS_LIMITE = 7;
+// Depois de 3 tentativas seguidas sem resposta, o 4o contato e o de encerramento.
+export const LIMITE_TENTATIVAS = 3;
+
+export const ROTULO_RESULTADO: Record<string, string> = {
+    sem_resposta: 'Sem resposta',
+    avaliando: 'Respondeu, vai avaliar',
+    caro: 'Ficou caro',
+    reuniao: 'Quer reunião',
+    retornar: 'Pediu para retornar depois',
+    quer_fechar: 'Quer fechar',
+    desistiu: 'Desistiu ou fechou com outro',
+    orcamento_enviado: 'Orçamento enviado',
+};
+
+export const MOTIVOS_PERDA = [
+    'Ficou caro, fora do orçamento',
+    'Fechou com outro fornecedor',
+    'Desistiu do serviço',
+    'Data indisponível',
+    'Outro',
+];
+export const MOTIVO_SEM_RESPOSTA = 'Sem resposta';
+
+// Textos com as palavras da Thai, tirados das conversas com clientes.
+export const MENSAGENS: Record<ChaveMensagem, { titulo: string; texto: string }> = {
+    primeiro: {
+        titulo: 'Primeiro contato',
+        texto: 'Olá {nome}, aqui é a Thai, do ateliê Thai Lago. Recebi teu contato no formulário do nosso site. É um prazer falar contigo!\n\nPara orientar melhor teu atendimento, pode compartilhar comigo por favor:\n\nCidade do casamento:\nEspaço do casamento:\nHorário de início e final:\nQuantidade de convidados:',
+    },
+    continuidade: {
+        titulo: 'Sem resposta',
+        texto: 'Olá {nome}, tudo bem? Gostaria de dar continuidade ao teu atendimento?',
+    },
+    retomar: {
+        titulo: 'Segunda tentativa',
+        texto: 'Oie {nome}! Tudo bem? Vi que nosso atendimento ficou pendente por aqui, estou enviando mensagem para saber se você gostaria de retomar. 🤍',
+    },
+    encerramento: {
+        titulo: 'Encerramento',
+        texto: 'Olá {nome}! Como vai? Como já passou algum tempo do nosso último contato, passando apenas para lembrar que, caso ainda deseje a experiência para o seu casamento, estou por aqui à disposição. 💖 Espero que todos os preparativos estejam indo bem!',
+    },
+    posOrcamento: {
+        titulo: 'Depois do orçamento',
+        texto: 'Olá {nome}, tudo bem? Espero que os preparativos estejam indo bem. ✨ Gostaria muito de saber se conseguiram dar uma olhada na proposta. Fez sentido pra vocês? Tem algum ajuste que eu posso fazer?',
+    },
+    caro: {
+        titulo: 'Ficou caro',
+        texto: 'Entendo querida, o casamento tem muitas demandas financeiras mesmo. Dentro das propostas que te mandei, qual valor total estaria dentro do orçamento de vocês? Posso tentar um desconto que alcance ou chegue próximo do seu planejamento.',
+    },
+    lembrete: {
+        titulo: 'Lembrete com fotos',
+        texto: 'Olá {nome}! Tudo bem? Estamos fazendo um acompanhamento aqui, vi que fiquei sem seu retorno. Aproveitando pra te enviar algumas fotos de últimos eventos.',
+    },
+    reuniao: {
+        titulo: 'Convite para reunião',
+        texto: 'Olá {nome}! Pensei em combinarmos uma reunião de 10/15 minutinhos para conversar mais sobre e explicar melhor alguns detalhes, principalmente caso tenha ficado algum receio ou dúvida. Estou à sua disposição. ✨',
+    },
+    confirmarReuniao: {
+        titulo: 'Confirmar reunião',
+        texto: 'Olá {nome}! Tudo bem? Tudo certinho com a nossa reunião?',
+    },
+};
+
+export function nomeSaudacao(nome: string): string {
+    const limpo = (nome || '').trim();
+    if (/\s(e|&)\s/i.test(limpo)) return limpo;
+    return limpo.split(/\s+/)[0] || limpo;
+}
+
+export function montarMensagem(chave: ChaveMensagem, lead: { name: string }): string {
+    return MENSAGENS[chave].texto.split('{nome}').join(nomeSaudacao(lead.name));
+}
 
 export function telefoneWhatsApp(telefone: string | null | undefined): string | null {
     const digitos = (telefone || '').replace(/\D/g, '').replace(/^0+/, '');
@@ -43,20 +122,81 @@ export function linkWhatsApp(telefone: string | null | undefined, mensagem: stri
     return numero ? `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}` : null;
 }
 
-const dataPorExtenso = (data: string) =>
-    new Date(data + 'T12:00:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
-
-export function mensagemContato(lead: LeadContato, contatosFeitos: number): string {
-    const casamento = lead.event_date ? ` em ${dataPorExtenso(lead.event_date)}` : '';
-    const local = lead.location ? `, em ${lead.location}` : '';
-    if (contatosFeitos === 0) {
-        return `Olá, ${lead.name}! Aqui é a Thai, do Ateliê Thai Lago. Recebi o contato de vocês pelo site sobre o casamento${casamento}${local}. Vou adorar conversar sobre as pinturas para esse dia!`;
-    }
-    return `Olá, ${lead.name}! Aqui é a Thai, do Ateliê Thai Lago. Passando para saber se vocês conseguiram ver o orçamento do casamento${casamento}. Posso ajudar com alguma dúvida?`;
+export function temOrcamentoLead(status: string, temProposta: boolean): boolean {
+    return temProposta || status === 'Proposta Enviada' || status === 'Em Negociação';
 }
 
-export function diasAteProximoContato(contatosFeitos: number): number | null {
-    return INTERVALOS_CONTATO[contatosFeitos - 1] ?? null;
+// Vale a data em que o contato foi feito: ele pode ser marcado antes ou depois do agendado.
+export const dataDoContato = (f: FollowupResumo) => f.feito_em || f.scheduled_at;
+
+export const feitosEmOrdem = (followups: FollowupResumo[]) =>
+    followups
+        .filter(f => f.done)
+        .sort((a, b) => new Date(dataDoContato(a)).getTime() - new Date(dataDoContato(b)).getTime());
+
+// So conta os "sem resposta" seguidos: qualquer outro resultado zera a contagem.
+export function tentativasSemResposta(followups: FollowupResumo[]): number {
+    let tentativas = 0;
+    for (const f of feitosEmOrdem(followups).reverse()) {
+        if (f.resultado !== 'sem_resposta') break;
+        tentativas++;
+    }
+    return tentativas;
+}
+
+export function mensagemSugerida(
+    contatosFeitos: number,
+    tentativas: number,
+    temOrcamento: boolean,
+    ultimoResultado: string | null,
+): ChaveMensagem {
+    if (ultimoResultado === 'reuniao') return 'confirmarReuniao';
+    if (tentativas >= LIMITE_TENTATIVAS) return 'encerramento';
+    if (temOrcamento) {
+        if (tentativas === 2) return 'reuniao';
+        if (tentativas === 1) return 'lembrete';
+        return 'posOrcamento';
+    }
+    if (contatosFeitos === 0) return 'primeiro';
+    if (tentativas === 2) return 'retomar';
+    return 'continuidade';
+}
+
+export function resumoContato<L extends LeadContato>(lead: L, temOrcamento: boolean): ItemContato<L> {
+    const followups = lead.lead_followups || [];
+    const feitos = feitosEmOrdem(followups);
+    const tentativas = tentativasSemResposta(followups);
+    const ultimoResultado = feitos[feitos.length - 1]?.resultado ?? null;
+    const proximo = followups
+        .filter(f => !f.done)
+        .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())[0] ?? null;
+    return {
+        lead,
+        followup: proximo,
+        contatosFeitos: feitos.length,
+        tentativas,
+        ultimoResultado,
+        temOrcamento,
+        mensagem: mensagemSugerida(feitos.length, tentativas, temOrcamento, ultimoResultado),
+    };
+}
+
+// O contato de encerramento e o que vem depois das 3 tentativas sem resposta.
+export function contatoEncerra(tentativas: number): boolean {
+    return tentativas >= LIMITE_TENTATIVAS;
+}
+
+const PRAZOS_SEM_ORCAMENTO = [2, 25, 30];
+const PRAZOS_COM_ORCAMENTO = [7, 14, 30];
+export const DIAS_APOS_ORCAMENTO = 7;
+
+// Dias ate o proximo contato; vazio quando a Thai escolhe a data ou o lead encerra.
+export function diasAteProximo(resultado: string, tentativas: number, temOrcamento: boolean): number | null {
+    if (resultado === 'avaliando') return 7;
+    if (resultado === 'caro') return 2;
+    if (resultado === 'orcamento_enviado') return DIAS_APOS_ORCAMENTO;
+    if (resultado !== 'sem_resposta' || contatoEncerra(tentativas)) return null;
+    return (temOrcamento ? PRAZOS_COM_ORCAMENTO : PRAZOS_SEM_ORCAMENTO)[tentativas];
 }
 
 export function dataProximoContato(dias: number, agora: Date = new Date()): Date {
@@ -66,8 +206,23 @@ export function dataProximoContato(dias: number, agora: Date = new Date()): Date
     return data;
 }
 
+const INTERESSE = ['reuniao', 'quer_fechar', 'retornar', 'caro', 'avaliando'];
+const DIAS_CASAMENTO_PROXIMO = 90;
+
+export function prioridadeContato(item: ItemContato, agora: Date = new Date()): { nivel: number; motivo: string } {
+    if (item.contatosFeitos === 0 && !item.temOrcamento) return { nivel: 0, motivo: 'Lead novo' };
+    if (item.ultimoResultado && INTERESSE.includes(item.ultimoResultado)) {
+        return { nivel: 1, motivo: ROTULO_RESULTADO[item.ultimoResultado] };
+    }
+    if (item.temOrcamento && item.lead.event_date) {
+        const dias = Math.ceil((new Date(item.lead.event_date + 'T12:00:00').getTime() - agora.getTime()) / 86400000);
+        if (dias >= 0 && dias <= DIAS_CASAMENTO_PROXIMO) return { nivel: 2, motivo: `Casamento em ${dias} dias` };
+    }
+    return { nivel: 3, motivo: '' };
+}
+
 // Mesmas opcoes do seletor de ordem. Quem nao tem o dado usado na ordem fica por ultimo.
-export function ordenarContatos<L extends LeadContato>(itens: ItemContato<L>[], ordem: string): ItemContato<L>[] {
+export function ordenarContatos<L extends LeadContato>(itens: ItemContato<L>[], ordem: string, agora: Date = new Date()): ItemContato<L>[] {
     const tempo = (valor: string | null | undefined) => (valor ? new Date(valor).getTime() : null);
     const comparar = (a: number | null, b: number | null, sentido: 1 | -1) => {
         if (a === null && b === null) return 0;
@@ -81,6 +236,9 @@ export function ordenarContatos<L extends LeadContato>(itens: ItemContato<L>[], 
 
     return [...itens].sort((a, b) => {
         switch (ordem) {
+            case 'prioridade':
+                return (prioridadeContato(a, agora).nivel - prioridadeContato(b, agora).nivel)
+                    || comparar(dataEvento(a), dataEvento(b), 1);
             case 'event_date_asc': return comparar(dataEvento(a), dataEvento(b), 1);
             case 'event_date_desc': return comparar(dataEvento(a), dataEvento(b), -1);
             case 'followup_asc': return comparar(contato(a), contato(b), 1);
@@ -91,7 +249,11 @@ export function ordenarContatos<L extends LeadContato>(itens: ItemContato<L>[], 
     });
 }
 
-export function organizarContatos<L extends LeadContato>(leads: L[], agora: Date = new Date()) {
+export function organizarContatos<L extends LeadContato>(
+    leads: L[],
+    agora: Date = new Date(),
+    temOrcamento: (lead: L) => boolean = () => false,
+) {
     const inicioHoje = new Date(agora);
     inicioHoje.setHours(0, 0, 0, 0);
     const fimHoje = new Date(inicioHoje);
@@ -109,26 +271,16 @@ export function organizarContatos<L extends LeadContato>(leads: L[], agora: Date
             casamentoPassado++;
             continue;
         }
-        const followups = lead.lead_followups || [];
-        const contatosFeitos = followups.filter(f => f.done).length;
-        const proximo = followups
-            .filter(f => !f.done)
-            .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())[0] ?? null;
-
-        const item = { lead, followup: proximo, contatosFeitos };
-        if (!proximo) {
+        const item = resumoContato(lead, temOrcamento(lead));
+        if (!item.followup) {
             semContato.push(item);
             continue;
         }
-        const quando = new Date(proximo.scheduled_at);
+        const quando = new Date(item.followup.scheduled_at);
         if (quando >= fimHoje) agendadosDepois++;
         else if (quando >= inicioHoje) hoje.push(item);
         else atrasados.push(item);
     }
-
-    const momento = (i: ItemContato<L>) => new Date(i.followup!.scheduled_at).getTime();
-    hoje.sort((a, b) => momento(a) - momento(b));
-    atrasados.sort((a, b) => momento(b) - momento(a)); // os mais recentes ainda tem mais chance
 
     return { hoje, atrasados, semContato, agendadosDepois, casamentoPassado };
 }
