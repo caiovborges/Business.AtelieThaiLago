@@ -82,6 +82,11 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
             <span className="font-display text-sm font-bold uppercase tracking-wider">Leads</span>
           </NavLink>
 
+          <NavLink to="/mensagens" onClick={onClose} className={({ isActive }) => getLinkClass(isActive)}>
+            <span className={`material-symbols-outlined ${getIconClass(location.pathname.startsWith('/mensagens'))}`}>chat</span>
+            <span className="font-display text-sm font-bold uppercase tracking-wider">Mensagens</span>
+          </NavLink>
+
           <NavLink to="/calendar" onClick={onClose} className={({ isActive }) => getLinkClass(isActive)}>
             <span className={`material-symbols-outlined ${getIconClass(location.pathname.startsWith('/calendar'))}`}>calendar_month</span>
             <span className="font-display text-sm font-bold uppercase tracking-wider">Calendário</span>

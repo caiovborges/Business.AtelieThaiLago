@@ -5,6 +5,7 @@ import { ptBR } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
+import AssinarAgendaModal from '../components/AssinarAgendaModal';
 
 const locales = {
     'pt-BR': ptBR,
@@ -34,6 +35,7 @@ const CalendarPage = () => {
     const [loading, setLoading] = useState(true);
     const [view, setView] = useState<View>(Views.MONTH);
     const [date, setDate] = useState(new Date());
+    const [assinando, setAssinando] = useState(false);
 
     const handleNavigate = (newDate: Date) => {
         setDate(newDate);
@@ -149,36 +151,11 @@ const CalendarPage = () => {
                     <p className="font-body text-gray-600 mt-1">Visualize seus eventos e tarefas de follow-up.</p>
                 </div>
                 <button
-                    onClick={() => {
-                        let icsData = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//AtelieThaiLago//Eventos//PT-BR\nCALSCALE:GREGORIAN\n";
-                        events.filter(e => e.type === 'EVENT').forEach(e => {
-                            icsData += "BEGIN:VEVENT\n";
-                            icsData += `UID:${e.id}@ateliethailago.com\n`;
-                            const dtStart = e.start.toISOString().replace(/[-:]/g, '').split('.')[0] + "Z";
-                            const dtEnd = e.end.toISOString().replace(/[-:]/g, '').split('.')[0] + "Z";
-                            icsData += `DTSTAMP:${dtStart}\n`;
-                            icsData += `DTSTART:${dtStart}\n`;
-                            icsData += `DTEND:${dtEnd}\n`;
-                            icsData += `SUMMARY:${e.title}\n`;
-                            if (e.originalData?.local) {
-                                icsData += `LOCATION:${e.originalData.local}\n`;
-                            }
-                            icsData += "END:VEVENT\n";
-                        });
-                        icsData += "END:VCALENDAR";
-
-                        const blob = new Blob([icsData], { type: 'text/calendar;charset=utf-8' });
-                        const link = document.createElement('a');
-                        link.href = window.URL.createObjectURL(blob);
-                        link.setAttribute('download', 'atelie_thai_lago.ics');
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                    }}
+                    onClick={() => setAssinando(true)}
                     className="flex items-center gap-2 bg-primary hover:bg-[#c0056b] text-white px-4 py-2 border-2 border-secondary shadow-hard hover:translate-y-[2px] hover:shadow-none transition-all rounded-sm font-display font-bold text-sm tracking-wider uppercase"
                 >
-                    <span className="material-symbols-outlined">sync</span>
-                    Sincronizar iPhone
+                    <span className="material-symbols-outlined">event_available</span>
+                    Agenda no celular
                 </button>
             </header>
 
@@ -214,6 +191,7 @@ const CalendarPage = () => {
                     />
                 </div>
             </div>
+            <AssinarAgendaModal aberto={assinando} onClose={() => setAssinando(false)} />
         </div>
     );
 };

@@ -106,8 +106,27 @@ export function nomeSaudacao(nome: string): string {
     return limpo.split(/\s+/)[0] || limpo;
 }
 
+// Textos editados na tela de Mensagens; sem edicao, vale o texto padrao acima.
+let personalizados: Partial<Record<ChaveMensagem, string>> = {};
+
+export function definirTextosPersonalizados(textos: Partial<Record<ChaveMensagem, string>>): void {
+    personalizados = textos;
+}
+
+export function textosPersonalizados(): Partial<Record<ChaveMensagem, string>> {
+    return personalizados;
+}
+
+export function textoMensagem(chave: ChaveMensagem): string {
+    return personalizados[chave] ?? MENSAGENS[chave].texto;
+}
+
+export function montarTexto(texto: string, nome: string): string {
+    return texto.split('{nome}').join(nomeSaudacao(nome));
+}
+
 export function montarMensagem(chave: ChaveMensagem, lead: { name: string }): string {
-    return MENSAGENS[chave].texto.split('{nome}').join(nomeSaudacao(lead.name));
+    return montarTexto(textoMensagem(chave), lead.name);
 }
 
 export function telefoneWhatsApp(telefone: string | null | undefined): string | null {

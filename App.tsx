@@ -14,6 +14,8 @@ import ProposalEditor from './pages/ProposalEditor';
 import Financeiro from './pages/Financeiro';
 import LeadsBoard from './pages/LeadsBoard';
 import LeadProfile from './pages/LeadProfile';
+import Mensagens from './pages/Mensagens';
+import { carregarMensagens } from './mensagensEditadas';
 import CalendarPage from './pages/CalendarPage';
 import Settings from './pages/Settings';
 
@@ -56,6 +58,13 @@ const AccessBlocked = () => {
 const ProtectedRoute = () => {
   const { user, loading, profileLoading, isApproved } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+  const [, setMensagensCarregadas] = React.useState(0);
+
+  // Atualiza a tela quando os textos editados chegam
+  React.useEffect(() => {
+    if (!isApproved) return;
+    carregarMensagens().finally(() => setMensagensCarregadas(v => v + 1));
+  }, [isApproved]);
 
   if (loading || profileLoading) {
     return (
@@ -119,6 +128,7 @@ const App = () => {
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="leads" element={<LeadsBoard />} />
               <Route path="leads/:id" element={<LeadProfile />} />
+              <Route path="mensagens" element={<Mensagens />} />
               <Route path="calendar" element={<CalendarPage />} />
               <Route path="clients" element={<ClientRegistry />} />
               <Route path="events" element={<EventCanvas />} />
