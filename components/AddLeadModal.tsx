@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import LeadFollowups from './LeadFollowups';
+import { FollowupResumo } from '../leadContato';
 
 interface Estado {
     id: number;
@@ -33,12 +34,7 @@ export interface EditingLead extends LeadFormData {
     id: string;
     created_at: string;
     _estado_id?: number | null;
-    lead_followups?: {
-        id: string;
-        scheduled_at: string;
-        done: boolean;
-        type: string;
-    }[];
+    lead_followups?: FollowupResumo[];
 }
 
 interface LeadModalProps {
@@ -95,6 +91,8 @@ const AddLeadModal = ({ isOpen, onClose, onSave, editingLead }: LeadModalProps) 
 
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
+    const [showDetails, setShowDetails] = useState(false);
+    const [eventosNaData, setEventosNaData] = useState<string[]>([]);
 
     useEffect(() => {
         if (!isOpen) return;
@@ -102,6 +100,24 @@ const AddLeadModal = ({ isOpen, onClose, onSave, editingLead }: LeadModalProps) 
             if (data) setEstados(data);
         });
     }, [isOpen]);
+
+    useEffect(() => {
+        if (isOpen) setShowDetails(false);
+    }, [isOpen, editingLead]);
+
+    // Avisa se ja existe evento na data do casamento
+    useEffect(() => {
+        if (!isOpen || !eventDate) {
+            setEventosNaData([]);
+            return;
+        }
+        let atual = true;
+        supabase.from('eventos').select('nome').eq('data_evento', eventDate).neq('status', 'Cancelado')
+            .then(({ data }) => {
+                if (atual) setEventosNaData((data || []).map((e: { nome: string }) => e.nome));
+            });
+        return () => { atual = false; };
+    }, [isOpen, eventDate]);
 
     useEffect(() => {
         if (isOpen && editingLead) {
@@ -169,7 +185,7 @@ const AddLeadModal = ({ isOpen, onClose, onSave, editingLead }: LeadModalProps) 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        if (!name.trim()) { setError('Nome é obrigatório'); return; }
+        if (!name.trim()) { setError('Informe o nome do casal.'); return; }
 
         setSaving(true);
         try {
@@ -207,65 +223,102 @@ const AddLeadModal = ({ isOpen, onClose, onSave, editingLead }: LeadModalProps) 
                         </div>
                     )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {/* Column 1: Contact Info */}
-                        <div className="flex flex-col gap-6">
-                            <h3 className="text-lg font-display font-bold uppercase border-b-2 border-primary w-fit pb-1 text-secondary">Dados de Contato</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                        <div className="md:col-span-2">
+                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Nome do Casal *</label>
+                            <input className="w-full bg-surface border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none"
+                                value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Ana & João" autoFocus={!editingLead} />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Email</label>
+                            <input type="email" className="w-full bg-surface border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none"
+                                value={email} onChange={e => setEmail(e.target.value)} placeholder="email@exemplo.com" />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Telefone / WhatsApp</label>
+                            <input type="tel" className="w-full bg-surface border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none"
+                                value={phone} onChange={e => setPhone(e.target.value)} placeholder="(00) 00000-0000" />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Data do Casamento</label>
+                            <input type="date" className="w-full bg-surface border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none"
+                                value={eventDate} onChange={e => setEventDate(e.target.value)} />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Local</label>
+                            <input className="w-full bg-surface border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none"
+                                value={location} onChange={e => setLocation(e.target.value)} placeholder="Hotel, salão, cidade..." />
+                        </div>
+                        {eventosNaData.length > 0 && (
+                            <div className="md:col-span-2 p-3 bg-amber-50 border-2 border-amber-400 text-amber-800 text-sm font-medium flex items-start gap-2">
+                                <span className="material-symbols-outlined text-lg">event_busy</span>
+                                <span>Já existe evento nesta data: {eventosNaData.join(', ')}.</span>
+                            </div>
+                        )}
+                        <div className="md:col-span-2">
+                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Observação</label>
+                            <textarea className="w-full bg-surface border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none resize-none h-24"
+                                value={notes} onChange={e => setNotes(e.target.value)} placeholder="O que o casal contou no formulário..." />
+                        </div>
+                    </div>
 
+                    <button
+                        type="button"
+                        onClick={() => setShowDetails(prev => !prev)}
+                        aria-expanded={showDetails}
+                        className="self-start flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-secondary hover:text-primary transition-colors"
+                    >
+                        <span className="material-symbols-outlined text-[18px]">{showDetails ? 'expand_less' : 'expand_more'}</span>
+                        Mais detalhes
+                    </button>
+
+                    {showDetails && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 p-4 border-2 border-secondary/20 bg-background-light">
                             <div>
-                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Nome do Lead *</label>
-                                <input className="w-full bg-surface border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none"
-                                    value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Ana Silva" />
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Outro nome</label>
+                                <input className="w-full bg-white border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none"
+                                    value={partnerName} onChange={e => setPartnerName(e.target.value)} />
                             </div>
-
                             <div>
-                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Nome do Casal</label>
-                                <input className="w-full bg-surface border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none"
-                                    value={partnerName} onChange={e => setPartnerName(e.target.value)} placeholder="Ex: Ana & João" />
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Instagram</label>
+                                <input className="w-full bg-white border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none"
+                                    value={instagram} onChange={e => setInstagram(e.target.value)} placeholder="@usuario" />
                             </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Email</label>
-                                    <input className="w-full bg-surface border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none"
-                                        value={email} onChange={e => setEmail(e.target.value)} placeholder="email@exemplo.com" />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Instagram</label>
-                                    <input className="w-full bg-surface border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none"
-                                        value={instagram} onChange={e => setInstagram(e.target.value)} placeholder="@usuario" />
-                                </div>
-                            </div>
-
                             <div>
-                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Telefone / WhatsApp</label>
-                                <input className="w-full bg-surface border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none"
-                                    value={phone} onChange={e => setPhone(e.target.value)} placeholder="(00) 00000-0000" />
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Etapa do Funil</label>
+                                <select className="w-full bg-white border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none appearance-none font-bold"
+                                    value={status} onChange={e => setStatus(e.target.value)}>
+                                    {PIPELINE_STAGES.map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
                             </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Estado</label>
-                                    <select className="w-full bg-surface border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none appearance-none"
-                                        value={selectedEstadoId || ''} onChange={e => setSelectedEstadoId(Number(e.target.value) || null)}>
-                                        <option value="">Selecione</option>
-                                        {estados.map(e => <option key={e.id} value={e.id}>{e.sigla} - {e.nome}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Cidade</label>
-                                    <select className="w-full bg-surface border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none appearance-none"
-                                        value={selectedCidadeId || ''} onChange={e => setSelectedCidadeId(Number(e.target.value) || null)} disabled={!selectedEstadoId}>
-                                        <option value="">Selecione</option>
-                                        {cidades.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                                    </select>
-                                </div>
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Origem do Lead</label>
+                                <select className="w-full bg-white border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none appearance-none"
+                                    value={source} onChange={e => setSource(e.target.value)}>
+                                    <option value="">Selecione</option>
+                                    {LEAD_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
                             </div>
-
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Estado</label>
+                                <select className="w-full bg-white border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none appearance-none"
+                                    value={selectedEstadoId || ''} onChange={e => { setSelectedEstadoId(Number(e.target.value) || null); setSelectedCidadeId(null); }}>
+                                    <option value="">Selecione</option>
+                                    {estados.map(e => <option key={e.id} value={e.id}>{e.sigla} - {e.nome}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Cidade</label>
+                                <select className="w-full bg-white border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none appearance-none"
+                                    value={selectedCidadeId || ''} onChange={e => setSelectedCidadeId(Number(e.target.value) || null)} disabled={!selectedEstadoId}>
+                                    <option value="">Selecione</option>
+                                    {cidades.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                                </select>
+                            </div>
                             {selectedEstadoId && (
-                                <div className="flex gap-2 items-end mt-2">
+                                <div className="md:col-span-2 flex gap-2 items-end">
                                     <div className="flex-1">
-                                        <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Não achou? Adicione:</label>
+                                        <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Não achou a cidade? Adicione:</label>
                                         <input
                                             className="w-full bg-white border-2 border-dashed border-secondary/40 p-2 text-xs placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-0 transition-colors"
                                             type="text"
@@ -290,43 +343,7 @@ const AddLeadModal = ({ isOpen, onClose, onSave, editingLead }: LeadModalProps) 
                                     </button>
                                 </div>
                             )}
-                        </div>
-
-                        {/* Column 2: Deal Info */}
-                        <div className="flex flex-col gap-6">
-                            <h3 className="text-lg font-display font-bold uppercase border-b-2 border-primary w-fit pb-1 text-secondary">Detalhes da Oportunidade</h3>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Status do Pipeline</label>
-                                    <select className="w-full bg-surface border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none appearance-none font-bold"
-                                        value={status} onChange={e => setStatus(e.target.value)}>
-                                        {PIPELINE_STAGES.map(s => <option key={s} value={s}>{s}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Data do Evento</label>
-                                    <input type="date" className="w-full bg-surface border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none"
-                                        value={eventDate} onChange={e => setEventDate(e.target.value)} />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Local do Evento</label>
-                                <input className="w-full bg-surface border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none"
-                                    value={location} onChange={e => setLocation(e.target.value)} placeholder="Hotel, Salão, Praia, etc." />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Origem do Lead</label>
-                                <select className="w-full bg-surface border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none appearance-none"
-                                    value={source} onChange={e => setSource(e.target.value)}>
-                                    <option value="">Selecione</option>
-                                    {LEAD_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
-                                </select>
-                            </div>
-
-                            <div>
+                            <div className="md:col-span-2">
                                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Serviços de Interesse</label>
                                 <div className="flex flex-wrap gap-2">
                                     {SERVICES.map(svc => (
@@ -342,14 +359,8 @@ const AddLeadModal = ({ isOpen, onClose, onSave, editingLead }: LeadModalProps) 
                                     ))}
                                 </div>
                             </div>
-
-                            <div>
-                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Observações</label>
-                                <textarea className="w-full bg-surface border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none resize-none h-24"
-                                    value={notes} onChange={e => setNotes(e.target.value)} placeholder="Anotações internas..." />
-                            </div>
                         </div>
-                    </div>
+                    )}
 
                     <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 mt-4 pt-4 border-t border-gray-200">
                         <button type="button" onClick={onClose}

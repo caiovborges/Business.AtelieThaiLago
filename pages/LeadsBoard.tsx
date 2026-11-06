@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
 import AddLeadModal, { LeadFormData, EditingLead, PIPELINE_STAGES } from '../components/AddLeadModal';
+import FalarHoje from '../components/FalarHoje';
+import { DIAS_APOS_LIMITE, ItemContato, dataProximoContato, diasAteProximoContato, linkWhatsApp, mensagemContato } from '../leadContato';
 
 // Status colors mapping
 const STATUS_COLORS: Record<string, string> = {
@@ -23,7 +25,10 @@ const LeadsBoard = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [sortOption, setSortOption] = useState<string>('created_at_desc'); // Default sort
-    const [viewMode, setViewMode] = useState<'funnel' | 'lost' | 'closed'>('funnel');
+    const [viewMode, setViewMode] = useState<'hoje' | 'funnel' | 'lost' | 'closed'>('hoje');
+    const [erroLeads, setErroLeads] = useState('');
+    const [leadOcupado, setLeadOcupado] = useState<string | null>(null);
+    const [aviso, setAviso] = useState('');
 
     // Modal State
     const [modalOpen, setModalOpen] = useState(false);
@@ -34,7 +39,7 @@ const LeadsBoard = () => {
         setLoading(true);
         const { data, error } = await supabase
             .from('leads')
-            .select('*, lead_followups(id, scheduled_at, done, type)')
+            .select('*, lead_followups(id, scheduled_at, done, type, notes)')
             .order('created_at', { ascending: false });
 
         const { data: propsData } = await supabase
@@ -46,6 +51,7 @@ const LeadsBoard = () => {
             setLeadsWithProposals(leadIds as Set<string>);
         }
 
+        setErroLeads(error ? error.message : '');
         if (data) {
             setLeads(data as EditingLead[]);
         }
@@ -69,20 +75,34 @@ const LeadsBoard = () => {
     // Handlers
     const handleSaveLead = async (formData: LeadFormData) => {
         if (!user) return;
+        const dados = { ...formData, event_date: formData.event_date || null };
 
         if (editingLead) {
             // Update
             const { error } = await supabase
                 .from('leads')
-                .update({ ...formData })
+                .update(dados)
                 .eq('id', editingLead.id);
             if (error) throw error;
         } else {
             // Insert
-            const { error } = await supabase
+            const { data: novoLead, error } = await supabase
                 .from('leads')
-                .insert([{ ...formData, user_id: user.id }]);
+                .insert([{ ...dados, user_id: user.id }])
+                .select('id')
+                .single();
             if (error) throw error;
+
+            // O primeiro contato ja entra na lista "Falar hoje"
+            const { error: erroContato } = await supabase.from('lead_followups').insert({
+                user_id: user.id,
+                lead_id: novoLead.id,
+                type: 'WhatsApp',
+                scheduled_at: new Date().toISOString(),
+                notes: 'Primeiro contato',
+                done: false,
+            });
+            if (erroContato) alert('Lead salvo, mas o primeiro contato não foi agendado: ' + erroContato.message);
         }
         fetchLeads();
     };
@@ -90,7 +110,13 @@ const LeadsBoard = () => {
     const handleDeleteLead = async (id: string) => {
         if (window.confirm('Tem certeza que deseja excluir este lead?')) {
             const { error } = await supabase.from('leads').delete().eq('id', id);
-            if (!error) fetchLeads();
+            if (error) {
+                alert(error.code === '23503'
+                    ? 'Este lead tem proposta vinculada e não pode ser excluído. Marque-o como Perdido.'
+                    : 'Erro ao excluir lead: ' + error.message);
+                return;
+            }
+            fetchLeads();
         }
     };
 
@@ -140,6 +166,60 @@ const LeadsBoard = () => {
         } else {
             fetchLeads();
         }
+    };
+
+    const handleContatoFeito = async ({ lead, followup, contatosFeitos }: ItemContato<EditingLead>) => {
+        if (!user) return;
+        const feitos = contatosFeitos + 1;
+        let dias = diasAteProximoContato(feitos);
+        if (dias === null) {
+            if (window.confirm(`Já foram ${feitos} contatos com ${lead.name}. Marcar como Perdido? Se cancelar, agendo outro contato em ${DIAS_APOS_LIMITE} dias.`)) {
+                await handleConcluirPerdido(lead, followup?.id ?? null);
+                return;
+            }
+            dias = DIAS_APOS_LIMITE;
+        }
+
+        setLeadOcupado(lead.id);
+        setAviso('');
+        if (followup) {
+            const { error } = await supabase.from('lead_followups').update({ done: true }).eq('id', followup.id);
+            if (error) {
+                alert('Erro ao marcar o contato como feito: ' + error.message);
+                setLeadOcupado(null);
+                return;
+            }
+        }
+        const proximo = dataProximoContato(dias);
+        const { error } = await supabase.from('lead_followups').insert({
+            user_id: user.id,
+            lead_id: lead.id,
+            type: 'WhatsApp',
+            scheduled_at: proximo.toISOString(),
+            notes: `Contato ${feitos + 1}`,
+            done: false,
+        });
+        if (error) {
+            alert('Contato marcado como feito, mas o próximo não foi agendado: ' + error.message);
+        } else {
+            setAviso(`${lead.name}: próximo contato em ${proximo.toLocaleDateString('pt-BR')}.`);
+        }
+        await fetchLeads();
+        setLeadOcupado(null);
+    };
+
+    // Marca como perdido e encerra o contato pendente, para ele nao aparecer mais
+    const handleConcluirPerdido = async (lead: EditingLead, followupId: string | null) => {
+        setLeadOcupado(lead.id);
+        const { error } = await supabase.from('leads').update({ status: 'Perdido' }).eq('id', lead.id);
+        if (error) {
+            alert('Erro ao atualizar status: ' + error.message);
+        } else {
+            if (followupId) await supabase.from('lead_followups').update({ done: true }).eq('id', followupId);
+            setAviso(`${lead.name} marcado como Perdido.`);
+            await fetchLeads();
+        }
+        setLeadOcupado(null);
     };
 
     const handleDragStart = (e: React.DragEvent, leadId: string) => {
@@ -252,6 +332,13 @@ const LeadsBoard = () => {
                 <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-secondary/5 p-3 rounded-lg border border-secondary/10">
                     <div className="flex gap-2 overflow-x-auto w-full xl:w-auto pb-2 xl:pb-0 hide-scrollbar shrink-0">
                         <button
+                            onClick={() => setViewMode('hoje')}
+                            className={`shrink-0 px-4 py-2 rounded-sm font-bold text-sm uppercase transition-all flex items-center gap-2 ${viewMode === 'hoje' ? 'bg-primary text-white shadow-md' : 'bg-white text-primary hover:bg-primary/10'}`}
+                        >
+                            <span className="material-symbols-outlined text-[18px]">today</span>
+                            Falar Hoje
+                        </button>
+                        <button
                             onClick={() => setViewMode('funnel')}
                             className={`shrink-0 px-4 py-2 rounded-sm font-bold text-sm uppercase transition-all flex items-center gap-2 ${viewMode === 'funnel' ? 'bg-secondary text-white shadow-md' : 'bg-white text-secondary hover:bg-secondary/10'}`}
                         >
@@ -309,7 +396,29 @@ const LeadsBoard = () => {
 
             {/* Content Area */}
             <div className="flex-1 overflow-hidden p-4 md:p-8 z-10 w-full relative">
-                {(viewMode === 'lost' || viewMode === 'closed') ? (
+                {aviso && viewMode === 'hoje' && (
+                    <div className="mb-4 p-3 bg-accent-success/10 border-2 border-accent-success text-accent-success text-sm font-medium flex items-center gap-2">
+                        <span className="material-symbols-outlined text-lg">check_circle</span>
+                        {aviso}
+                    </div>
+                )}
+                {viewMode === 'hoje' ? (
+                    <FalarHoje
+                        leads={leads.filter(l =>
+                            l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            (l.email || '').toLowerCase().includes(searchTerm.toLowerCase()))}
+                        loading={loading}
+                        erro={erroLeads}
+                        ocupado={leadOcupado}
+                        onAbrir={(lead) => { setEditingLead(lead); setModalOpen(true); }}
+                        onFeito={handleContatoFeito}
+                        onPerdido={(lead) => {
+                            if (window.confirm(`Marcar ${lead.name} como Perdido?`)) {
+                                handleConcluirPerdido(lead, lead.lead_followups?.find(fu => !fu.done)?.id ?? null);
+                            }
+                        }}
+                    />
+                ) : (viewMode === 'lost' || viewMode === 'closed') ? (
                     /* LIST/TABLE VIEW (Combined logic for Lost and Closed) */
                     <div className="bg-white/50 backdrop-blur-sm border-2 border-secondary/20 rounded-lg overflow-hidden h-full flex flex-col shadow-sm">
                         <div className="overflow-x-auto overflow-y-auto flex-1 p-0">
@@ -478,6 +587,22 @@ const LeadsBoard = () => {
 
                                             {/* Bottom: Actions (Always Visible) */}
                                             <div className="flex gap-2 pt-2 border-t border-gray-100 group-hover:border-gray-200 transition-colors">
+                                                {(() => {
+                                                    const contatos = (lead.lead_followups || []).filter(fu => fu.done).length;
+                                                    const whatsapp = linkWhatsApp(lead.phone, mensagemContato(lead, contatos));
+                                                    return whatsapp && (
+                                                        <a
+                                                            href={whatsapp}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            className="px-2 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded-sm flex items-center justify-center hover:bg-green-100 transition-all"
+                                                            title="Abrir WhatsApp"
+                                                        >
+                                                            <span className="material-symbols-outlined text-[16px]">chat</span>
+                                                        </a>
+                                                    );
+                                                })()}
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); handleConvertToClient(lead); }}
                                                     className="flex-1 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded-sm flex items-center justify-center gap-1 hover:bg-green-100 hover:shadow-sm transition-all"
@@ -513,7 +638,7 @@ const LeadsBoard = () => {
 
             <AddLeadModal
                 isOpen={modalOpen}
-                onClose={() => setModalOpen(false)}
+                onClose={() => { setModalOpen(false); fetchLeads(); }}
                 onSave={handleSaveLead}
                 editingLead={editingLead}
             />

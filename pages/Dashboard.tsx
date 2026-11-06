@@ -379,7 +379,7 @@ const Dashboard = () => {
 
                     let icon = 'call';
                     let color = 'bg-orange-100 text-orange-800';
-                    if (fu.type === 'Whatsapp') { icon = 'chat'; color = 'bg-green-100 text-green-800'; }
+                    if (fu.type === 'WhatsApp') { icon = 'chat'; color = 'bg-green-100 text-green-800'; }
                     if (fu.type === 'Email') { icon = 'mail'; color = 'bg-blue-100 text-blue-800'; }
 
                     return (
