@@ -6,7 +6,8 @@ import AddLeadModal, { EditingLead, LeadFormData, PIPELINE_STAGES } from '../com
 import LeadFollowups from '../components/LeadFollowups';
 import OrcamentoModal, { CAMPOS_ORCAMENTO, OrcamentoSalvo, itensComValor, rotuloQuantidade } from '../components/OrcamentoModal';
 import ResultadoContatoModal, { AlvoResultado } from '../components/ResultadoContatoModal';
-import { ChaveMensagem, FollowupResumo, LIMITE_TENTATIVAS, MENSAGENS, ROTULO_RESULTADO, dataDoContato, feitosEmOrdem, linkWhatsApp, montarMensagem, resumoContato, temOrcamentoLead } from '../leadContato';
+import { ChaveMensagem, FollowupResumo, LIMITE_TENTATIVAS, MENSAGENS, ROTULO_RESULTADO, dataDoContato, esperaResposta, feitosEmOrdem, linkConversa, linkWhatsApp, montarMensagem, prazoVencido, resumoContato, temOrcamentoLead } from '../leadContato';
+import { mensagemEnviada, naoRespondeu } from '../leadAcoes';
 import FecharLeadModal from '../components/FecharLeadModal';
 import { abrirContrato, enviarContrato, removerContrato } from '../contratos';
 import { formatarReais } from '../valores';
@@ -98,7 +99,7 @@ const LeadProfile = () => {
         if (!id) return;
         const [leadRes, followupsRes, orcamentosRes, eventoRes] = await Promise.all([
             supabase.from('leads').select('*, cidades(nome, estado_id, estados(sigla))').eq('id', id).maybeSingle(),
-            supabase.from('lead_followups').select('id, scheduled_at, done, type, notes, resultado, feito_em').eq('lead_id', id).order('scheduled_at', { ascending: true }),
+            supabase.from('lead_followups').select('id, scheduled_at, done, type, notes, resultado, feito_em, enviada_em').eq('lead_id', id).order('scheduled_at', { ascending: true }),
             supabase.from('propostas').select(CAMPOS_ORCAMENTO).eq('lead_id', id).order('created_at', { ascending: false }),
             supabase.from('eventos').select('id, status, contrato_url, plano_fechado, valor_previsto').eq('lead_id', id).maybeSingle(),
         ]);
@@ -159,12 +160,14 @@ const LeadProfile = () => {
     const anteriores = comValores.filter(o => !atuais.includes(o));
     const resumo = resumoContato({ ...lead, lead_followups: followups }, temOrcamentoLead(lead.status, comValores.length > 0));
     const chaveMensagem = mensagemEscolhida || resumo.mensagem;
-    const whatsapp = linkWhatsApp(lead.phone, montarMensagem(chaveMensagem, lead));
+    const whatsapp = resumo.aguardando ? linkConversa(lead.phone) : linkWhatsApp(lead.phone, montarMensagem(chaveMensagem, lead));
+    const emAtendimento = !perdido && lead.status !== 'Fechado';
     const cidade = lead.cidades ? `${lead.cidades.nome}${lead.cidades.estados ? ` - ${lead.cidades.estados.sigla}` : ''}` : '';
 
     const executar = async (acao: () => Promise<string>) => {
         setOcupado(true);
         setAviso('');
+        setErro('');
         try {
             setAviso(await acao());
         } catch (e: any) {
@@ -215,11 +218,11 @@ const LeadProfile = () => {
                         <h1 className="font-display text-3xl md:text-4xl font-black tracking-tight text-secondary break-words">{lead.name}</h1>
                         <p className="mt-1 text-sm text-gray-600">Casamento: {dataEvento(lead.event_date)}{lead.location ? ` · ${lead.location}` : ''}</p>
                     </div>
-                    <div className="grid grid-cols-2 sm:flex gap-2 shrink-0">
+                    <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 shrink-0">
                         {whatsapp ? (
                             <a href={whatsapp} target="_blank" rel="noopener noreferrer" className={`${botao} bg-green-600 text-white hover:bg-green-700`}>
                                 <span className="material-symbols-outlined text-[18px]">chat</span>
-                                WhatsApp
+                                {resumo.aguardando ? 'Ver conversa' : 'WhatsApp'}
                             </a>
                         ) : (
                             <button type="button" onClick={() => setEditando(true)} className={`${botao} bg-white text-gray-500`}>Corrigir telefone</button>
@@ -230,15 +233,38 @@ const LeadProfile = () => {
                                 Fechar
                             </button>
                         )}
-                        <button
-                            type="button"
-                            disabled={ocupado || perdido || lead.status === 'Fechado'}
-                            onClick={() => setAlvoResultado({ item: resumo })}
-                            className={`${botao} bg-primary text-white`}
-                        >
-                            <span className="material-symbols-outlined text-[18px]">check</span>
-                            Contato feito
-                        </button>
+                        {emAtendimento && resumo.aguardando && (
+                            <>
+                                <button type="button" disabled={ocupado} onClick={() => setAlvoResultado({ item: resumo })} className={`${botao} bg-primary text-white`}>
+                                    <span className="material-symbols-outlined text-[18px]">forum</span>
+                                    Respondeu
+                                </button>
+                                {prazoVencido(proximo) && (
+                                    <button type="button" disabled={ocupado} onClick={() => { setMensagemEscolhida(''); executar(() => naoRespondeu(resumo)); }} className={`${botao} bg-white text-secondary hover:bg-gray-50`}>
+                                        <span className="material-symbols-outlined text-[18px]">schedule</span>
+                                        Não respondeu
+                                    </button>
+                                )}
+                            </>
+                        )}
+                        {emAtendimento && !resumo.aguardando && esperaResposta(resumo) && (
+                            <>
+                                <button type="button" disabled={ocupado} onClick={() => { setMensagemEscolhida(''); executar(() => mensagemEnviada(resumo, user!.id)); }} className={`${botao} bg-primary text-white`}>
+                                    <span className="material-symbols-outlined text-[18px]">send</span>
+                                    Mensagem enviada
+                                </button>
+                                <button type="button" disabled={ocupado} onClick={() => setAlvoResultado({ item: resumo })} className={`${botao} bg-white text-secondary hover:bg-gray-50`}>
+                                    <span className="material-symbols-outlined text-[18px]">forum</span>
+                                    Já respondeu
+                                </button>
+                            </>
+                        )}
+                        {emAtendimento && !resumo.aguardando && !esperaResposta(resumo) && (
+                            <button type="button" disabled={ocupado} onClick={() => setAlvoResultado({ item: resumo })} className={`${botao} bg-primary text-white`}>
+                                <span className="material-symbols-outlined text-[18px]">check</span>
+                                Contato feito
+                            </button>
+                        )}
                     </div>
                 </header>
 
@@ -325,7 +351,8 @@ const LeadProfile = () => {
                     )}
 
                     <dl className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <Dado rotulo="Próximo contato">
+                        {resumo.aguardando && <Dado rotulo="Mensagem enviada em">{dataCurta(proximo!.enviada_em!)}</Dado>}
+                        <Dado rotulo={resumo.aguardando ? 'Conferir resposta em' : 'Próximo contato'}>
                             {proximo ? (
                                 <span className={atrasado ? 'font-bold text-red-600' : 'font-bold'}>
                                     {dataCurta(proximo.scheduled_at)}{atrasado ? ' (atrasado)' : ''}
@@ -339,7 +366,7 @@ const LeadProfile = () => {
                         {perdido && <Dado rotulo="Motivo da perda">{lead.motivo_perda}</Dado>}
                     </dl>
 
-                    {!perdido && !evento && (
+                    {!perdido && !evento && !resumo.aguardando && (
                         <div>
                             <label htmlFor="perfil-mensagem" className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Mensagem do botão WhatsApp</label>
                             <select

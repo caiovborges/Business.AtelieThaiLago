@@ -7,7 +7,8 @@ import FalarHoje from '../components/FalarHoje';
 import OrcamentoModal from '../components/OrcamentoModal';
 import FecharLeadModal from '../components/FecharLeadModal';
 import ResultadoContatoModal, { AlvoResultado } from '../components/ResultadoContatoModal';
-import { linkWhatsApp, montarMensagem, resumoContato, temOrcamentoLead } from '../leadContato';
+import { linkConversa, linkWhatsApp, montarMensagem, resumoContato, temOrcamentoLead } from '../leadContato';
+import { mensagemEnviada, naoRespondeu } from '../leadAcoes';
 
 // Status colors mapping
 const STATUS_COLORS: Record<string, string> = {
@@ -38,13 +39,14 @@ const LeadsBoard = () => {
     // Modal State
     const [modalOpen, setModalOpen] = useState(false);
     const [editingLead, setEditingLead] = useState<EditingLead | null>(null);
+    const [ocupadoContato, setOcupadoContato] = useState(false);
 
     // Initial Fetch
     const fetchLeads = async () => {
         setLoading(true);
         const { data, error } = await supabase
             .from('leads')
-            .select('*, lead_followups(id, scheduled_at, done, type, notes, resultado, feito_em)')
+            .select('*, lead_followups(id, scheduled_at, done, type, notes, resultado, feito_em, enviada_em)')
             .order('created_at', { ascending: false });
 
         const { data: propsData } = await supabase
@@ -126,6 +128,19 @@ const LeadsBoard = () => {
     };
 
     const temOrcamento = (lead: EditingLead) => temOrcamentoLead(lead.status, leadsWithProposals.has(lead.id));
+
+    const acaoContato = async (acao: () => Promise<string>) => {
+        setOcupadoContato(true);
+        setAviso('');
+        try {
+            setAviso(await acao());
+            await fetchLeads();
+        } catch (falha: any) {
+            alert(falha.message);
+        } finally {
+            setOcupadoContato(false);
+        }
+    };
 
     const handleDragStart = (e: React.DragEvent, leadId: string) => {
         e.dataTransfer.setData('leadId', leadId);
@@ -327,10 +342,13 @@ const LeadsBoard = () => {
                         ordem={sortOption}
                         loading={loading}
                         erro={erroLeads}
+                        ocupado={ocupadoContato}
                         temOrcamento={temOrcamento}
                         onAbrir={(lead) => navigate(`/leads/${lead.id}`)}
                         onOrcamento={setLeadOrcamento}
                         onFeito={(item) => setAlvoResultado({ item })}
+                        onEnviada={(item) => acaoContato(() => mensagemEnviada(item, user!.id))}
+                        onNaoRespondeu={(item) => acaoContato(() => naoRespondeu(item))}
                         onPerdido={(item) => setAlvoResultado({ item, inicial: 'desistiu' })}
                     />
                 ) : (viewMode === 'lost' || viewMode === 'closed') ? (
@@ -503,7 +521,7 @@ const LeadsBoard = () => {
                                                 </button>
                                                 {(() => {
                                                     const resumo = resumoContato(lead, temOrcamento(lead));
-                                                    const whatsapp = linkWhatsApp(lead.phone, montarMensagem(resumo.mensagem, lead));
+                                                    const whatsapp = resumo.aguardando ? linkConversa(lead.phone) : linkWhatsApp(lead.phone, montarMensagem(resumo.mensagem, lead));
                                                     return whatsapp && (
                                                         <a
                                                             href={whatsapp}

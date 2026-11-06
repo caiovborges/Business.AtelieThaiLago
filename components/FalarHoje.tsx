@@ -1,7 +1,7 @@
 import React from 'react';
 import {
-    ItemContato, LIMITE_TENTATIVAS, LeadContato, MENSAGENS, contatoEncerra, linkWhatsApp, montarMensagem,
-    ordenarContatos, organizarContatos, prioridadeContato,
+    ItemContato, LIMITE_TENTATIVAS, LeadContato, MENSAGENS, contatoEncerra, esperaResposta, linkConversa, linkWhatsApp, montarMensagem,
+    ordenarContatos, organizarContatos, prazoVencido, prioridadeContato,
 } from '../leadContato';
 
 interface FalarHojeProps<L extends LeadContato> {
@@ -9,18 +9,21 @@ interface FalarHojeProps<L extends LeadContato> {
     ordem: string;
     loading: boolean;
     erro: string;
+    ocupado: boolean;
     temOrcamento: (lead: L) => boolean;
     onAbrir: (lead: L) => void;
     onOrcamento: (lead: L) => void;
     onFeito: (item: ItemContato<L>) => void;
+    onEnviada: (item: ItemContato<L>) => void;
+    onNaoRespondeu: (item: ItemContato<L>) => void;
     onPerdido: (item: ItemContato<L>) => void;
 }
 
 const formatarData = (valor: string) =>
     new Date(valor).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 
-function FalarHoje<L extends LeadContato>({ leads, ordem, loading, erro, temOrcamento, onAbrir, onOrcamento, onFeito, onPerdido }: FalarHojeProps<L>) {
-    const { hoje, atrasados, semContato, agendadosDepois, casamentoPassado } = organizarContatos(leads, new Date(), temOrcamento);
+function FalarHoje<L extends LeadContato>({ leads, ordem, loading, erro, ocupado, temOrcamento, onAbrir, onOrcamento, onFeito, onEnviada, onNaoRespondeu, onPerdido }: FalarHojeProps<L>) {
+    const { hoje, atrasados, semContato, conferir, aguardando, agendadosDepois, casamentoPassado } = organizarContatos(leads, new Date(), temOrcamento);
 
     if (erro) {
         return (
@@ -40,15 +43,17 @@ function FalarHoje<L extends LeadContato>({ leads, ordem, loading, erro, temOrca
     }
 
     const renderItem = (item: ItemContato<L>) => {
-        const { lead, followup, contatosFeitos, tentativas, mensagem } = item;
-        const whatsapp = linkWhatsApp(lead.phone, montarMensagem(mensagem, lead));
+        const { lead, followup, contatosFeitos, tentativas, mensagem, aguardando: emEspera } = item;
+        const whatsapp = emEspera ? linkConversa(lead.phone) : linkWhatsApp(lead.phone, montarMensagem(mensagem, lead));
+        const botaoPrincipal = 'h-11 px-3 bg-primary text-white border-2 border-secondary rounded-sm flex items-center justify-center gap-1 text-xs font-bold uppercase disabled:opacity-50';
+        const botaoSecundario = 'h-11 px-3 bg-white text-secondary border-2 border-secondary rounded-sm flex items-center justify-center gap-1 text-xs font-bold uppercase hover:bg-gray-50 transition-colors disabled:opacity-50';
         const { motivo } = prioridadeContato(item);
         const dataEvento = lead.event_date
             ? new Date(lead.event_date + 'T12:00:00').toLocaleDateString('pt-BR')
             : 'Data a definir';
 
         return (
-            <div key={lead.id} className="bg-white border-2 border-secondary p-4 flex flex-col lg:flex-row lg:items-center gap-3 rounded-sm">
+            <div key={lead.id} className="bg-white border-2 border-secondary p-4 flex flex-col xl:flex-row xl:items-center gap-3 rounded-sm">
                 <button type="button" onClick={() => onAbrir(lead)} className="flex-1 min-w-0 text-left">
                     <p className="font-display text-lg font-bold text-secondary truncate">
                         {lead.name}
@@ -76,17 +81,26 @@ function FalarHoje<L extends LeadContato>({ leads, ordem, loading, erro, temOrca
                                 {tentativas} de {LIMITE_TENTATIVAS} sem resposta
                             </span>
                         )}
-                        {followup && (
+                        {followup && !emEspera && (
                             <span className="font-mono font-bold text-orange-600">Agendado para {formatarData(followup.scheduled_at)}</span>
                         )}
+                        {followup && emEspera && (
+                            <span className="font-mono font-bold text-orange-600">Conferir em {formatarData(followup.scheduled_at)}</span>
+                        )}
                     </p>
-                    <p className="text-xs text-secondary mt-1">
-                        <span className="font-bold">Mensagem:</span> {MENSAGENS[mensagem].titulo}
-                    </p>
+                    {emEspera ? (
+                        <p className="text-xs text-secondary mt-1">
+                            <span className="font-bold">Mensagem enviada em</span> {formatarData(followup!.enviada_em!)}. Aguardando resposta.
+                        </p>
+                    ) : (
+                        <p className="text-xs text-secondary mt-1">
+                            <span className="font-bold">Mensagem:</span> {MENSAGENS[mensagem].titulo}
+                        </p>
+                    )}
                     {followup?.notes && <p className="text-xs text-gray-500 mt-1 truncate">{followup.notes}</p>}
                 </button>
 
-                <div className="grid grid-cols-2 lg:flex gap-2 shrink-0">
+                <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 shrink-0">
                     {whatsapp ? (
                         <a
                             href={whatsapp}
@@ -95,7 +109,7 @@ function FalarHoje<L extends LeadContato>({ leads, ordem, loading, erro, temOrca
                             className="h-11 px-3 bg-green-600 text-white border-2 border-secondary rounded-sm flex items-center justify-center gap-1 text-xs font-bold uppercase hover:bg-green-700 transition-colors"
                         >
                             <span className="material-symbols-outlined text-[18px]">chat</span>
-                            WhatsApp
+                            {emEspera ? 'Ver conversa' : 'WhatsApp'}
                         </a>
                     ) : (
                         <button
@@ -114,14 +128,36 @@ function FalarHoje<L extends LeadContato>({ leads, ordem, loading, erro, temOrca
                         <span className="material-symbols-outlined text-[18px]">request_quote</span>
                         Orçamento
                     </button>
-                    <button
-                        type="button"
-                        onClick={() => onFeito(item)}
-                        className="h-11 px-3 bg-primary text-white border-2 border-secondary rounded-sm flex items-center justify-center gap-1 text-xs font-bold uppercase"
-                    >
-                        <span className="material-symbols-outlined text-[18px]">check</span>
-                        Feito
-                    </button>
+                    {emEspera ? (
+                        <>
+                            <button type="button" disabled={ocupado} onClick={() => onFeito(item)} className={botaoPrincipal}>
+                                <span className="material-symbols-outlined text-[18px]">forum</span>
+                                Respondeu
+                            </button>
+                            {prazoVencido(followup) && (
+                                <button type="button" disabled={ocupado} onClick={() => onNaoRespondeu(item)} className={botaoSecundario}>
+                                    <span className="material-symbols-outlined text-[18px]">schedule</span>
+                                    Não respondeu
+                                </button>
+                            )}
+                        </>
+                    ) : esperaResposta(item) ? (
+                        <>
+                            <button type="button" disabled={ocupado} onClick={() => onEnviada(item)} className={botaoPrincipal}>
+                                <span className="material-symbols-outlined text-[18px]">send</span>
+                                Mensagem enviada
+                            </button>
+                            <button type="button" disabled={ocupado} onClick={() => onFeito(item)} className={botaoSecundario}>
+                                <span className="material-symbols-outlined text-[18px]">forum</span>
+                                Já respondeu
+                            </button>
+                        </>
+                    ) : (
+                        <button type="button" disabled={ocupado} onClick={() => onFeito(item)} className={botaoPrincipal}>
+                            <span className="material-symbols-outlined text-[18px]">check</span>
+                            Contato feito
+                        </button>
+                    )}
                     <button
                         type="button"
                         onClick={() => onPerdido(item)}
@@ -144,7 +180,7 @@ function FalarHoje<L extends LeadContato>({ leads, ordem, loading, erro, temOrca
             </section>
         );
 
-    const semPendencias = hoje.length + atrasados.length + semContato.length === 0;
+    const semPendencias = hoje.length + conferir.length + atrasados.length + semContato.length === 0;
 
     return (
         <div className="h-full overflow-y-auto flex flex-col gap-6 pb-8">
@@ -155,8 +191,19 @@ function FalarHoje<L extends LeadContato>({ leads, ordem, loading, erro, temOrca
                 </div>
             )}
             {grupo('Para hoje', hoje, 'text-primary')}
+            {grupo('Conferir resposta', conferir, 'text-orange-600')}
             {grupo('Atrasados', atrasados, 'text-red-600')}
             {grupo('Sem próximo contato', semContato, 'text-gray-600')}
+            {aguardando.length > 0 && (
+                <details>
+                    <summary className="cursor-pointer font-display font-bold uppercase tracking-wider text-sm text-gray-600">
+                        Aguardando resposta ({aguardando.length})
+                    </summary>
+                    <div className="mt-3 flex flex-col gap-3">
+                        {ordenarContatos(aguardando, ordem).map(renderItem)}
+                    </div>
+                </details>
+            )}
             {(agendadosDepois > 0 || casamentoPassado > 0) && (
                 <p className="text-xs text-gray-500 font-mono">
                     {agendadosDepois > 0 && `${agendadosDepois} agendado${agendadosDepois > 1 ? 's' : ''} para os próximos dias. `}

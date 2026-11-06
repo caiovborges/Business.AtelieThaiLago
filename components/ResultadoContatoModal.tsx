@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { registrarContato } from '../leadAcoes';
 import {
-    ItemContato, LIMITE_TENTATIVAS, LeadContato, MENSAGENS, MOTIVOS_PERDA, MOTIVO_SEM_RESPOSTA, ROTULO_RESULTADO,
-    contatoEncerra, dataProximoContato, diasAteProximo, linkWhatsApp, montarMensagem,
+    ItemContato, LIMITE_TENTATIVAS, LeadContato, MENSAGENS, MOTIVOS_PERDA, ROTULO_RESULTADO,
+    dataProximoContato, diasAteProximo, esperaResposta, linkWhatsApp, montarMensagem, notaTentativa,
 } from '../leadContato';
 
 export interface AlvoResultado<L extends LeadContato = LeadContato> {
@@ -50,14 +50,15 @@ function ResultadoContatoModal<L extends LeadContato>({ alvo, onClose, onSalvo, 
     const { item } = alvo;
     const { lead, followup, tentativas, temOrcamento } = item;
 
-    const encerraSemResposta = resultado === 'sem_resposta' && contatoEncerra(tentativas);
+    // "Sem resposta" so e opcao aqui ao confirmar reuniao; nos demais contatos vem depois da espera.
+    const opcoes = esperaResposta(item) ? OPCOES.filter(o => o !== 'sem_resposta') : OPCOES;
     const pedeData = resultado === 'reuniao' || resultado === 'retornar';
     const dias = resultado ? diasAteProximo(resultado, tentativas, temOrcamento) : null;
     const dataAutomatica = dias !== null ? dataProximoContato(dias) : null;
     const linkCaro = resultado === 'caro' ? linkWhatsApp(lead.phone, montarMensagem('caro', lead)) : null;
 
     const notaPadrao = () => {
-        if (resultado === 'sem_resposta') return `Tentativa ${tentativas + 2} de ${LIMITE_TENTATIVAS + 1}`;
+        if (resultado === 'sem_resposta') return notaTentativa(tentativas);
         if (resultado === 'reuniao') return 'Reunião';
         if (resultado === 'retornar') return 'Retorno combinado';
         return ROTULO_RESULTADO[resultado];
@@ -87,7 +88,7 @@ function ResultadoContatoModal<L extends LeadContato>({ alvo, onClose, onSalvo, 
                 return;
             }
 
-            const perdido = resultado === 'desistiu' || encerraSemResposta;
+            const perdido = resultado === 'desistiu';
             const negociando = (resultado === 'caro' || resultado === 'reuniao') && lead.status !== 'Em Negociação';
             let proximo: Date | null = null;
             if (pedeData) {
@@ -103,7 +104,7 @@ function ResultadoContatoModal<L extends LeadContato>({ alvo, onClose, onSalvo, 
                 proximo: perdido ? null : proximo,
                 nota: perdido ? null : (nota.trim() || notaPadrao()),
                 status: perdido ? 'Perdido' : negociando ? 'Em Negociação' : null,
-                motivo: resultado === 'desistiu' ? motivo : encerraSemResposta ? MOTIVO_SEM_RESPOSTA : null,
+                motivo: perdido ? motivo : null,
             });
 
             onSalvo(perdido
@@ -138,7 +139,7 @@ function ResultadoContatoModal<L extends LeadContato>({ alvo, onClose, onSalvo, 
 
                     <fieldset className="flex flex-col gap-2">
                         <legend className="sr-only">Resultado do contato</legend>
-                        {OPCOES.map(opcao => (
+                        {opcoes.map(opcao => (
                             <label key={opcao} className={`flex items-center gap-2 p-3 border-2 cursor-pointer ${resultado === opcao ? 'border-primary bg-primary/5' : 'border-gray-200'}`}>
                                 <input type="radio" name="resultado" checked={resultado === opcao} onChange={() => setResultado(opcao)} className="shrink-0" />
                                 <span className="text-sm text-secondary">{ROTULO_RESULTADO[opcao]}</span>
@@ -147,14 +148,10 @@ function ResultadoContatoModal<L extends LeadContato>({ alvo, onClose, onSalvo, 
                     </fieldset>
 
                     {resultado === 'sem_resposta' && (
-                        <p className={`text-sm font-medium ${encerraSemResposta ? 'text-accent-error' : 'text-gray-600'}`}>
-                            {encerraSemResposta
-                                ? 'Este era o contato de encerramento: o lead vai para Perdido.'
-                                : `Tentativa ${tentativas + 1} de ${LIMITE_TENTATIVAS} sem resposta.`}
-                        </p>
+                        <p className="text-sm font-medium text-gray-600">Tentativa {tentativas + 1} de {LIMITE_TENTATIVAS} sem resposta.</p>
                     )}
 
-                    {dataAutomatica && !encerraSemResposta && (
+                    {dataAutomatica && (
                         <p className="text-sm font-mono text-gray-600">Próximo contato em {dataAutomatica.toLocaleDateString('pt-BR')}.</p>
                     )}
 
@@ -192,7 +189,7 @@ function ResultadoContatoModal<L extends LeadContato>({ alvo, onClose, onSalvo, 
                         </div>
                     )}
 
-                    {resultado && resultado !== 'quer_fechar' && resultado !== 'desistiu' && !encerraSemResposta && (
+                    {resultado && resultado !== 'quer_fechar' && resultado !== 'desistiu' && (
                         <div>
                             <label htmlFor="resultado-nota" className={estiloRotulo}>Anotação para o próximo contato</label>
                             <input id="resultado-nota" className={estiloInput} value={nota} onChange={e => setNota(e.target.value)} placeholder="Opcional" />

@@ -8,6 +8,7 @@ export interface FollowupResumo {
     notes?: string | null;
     resultado?: string | null;
     feito_em?: string | null;
+    enviada_em?: string | null;
 }
 
 export interface LeadContato {
@@ -33,6 +34,7 @@ export interface ItemContato<L extends LeadContato = LeadContato> {
     ultimoResultado: string | null;
     temOrcamento: boolean;
     mensagem: ChaveMensagem;
+    aguardando: boolean;
 }
 
 export const ETAPAS_ATIVAS = ['Novo Lead', 'Proposta Enviada', 'Em Negociação'];
@@ -141,6 +143,12 @@ export function linkWhatsApp(telefone: string | null | undefined, mensagem: stri
     return numero ? `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}` : null;
 }
 
+// Abre a conversa sem texto pronto, para conferir se o casal respondeu.
+export function linkConversa(telefone: string | null | undefined): string | null {
+    const numero = telefoneWhatsApp(telefone);
+    return numero ? `https://wa.me/${numero}` : null;
+}
+
 export function temOrcamentoLead(status: string, temProposta: boolean): boolean {
     return temProposta || status === 'Proposta Enviada' || status === 'Em Negociação';
 }
@@ -197,8 +205,23 @@ export function resumoContato<L extends LeadContato>(lead: L, temOrcamento: bool
         ultimoResultado,
         temOrcamento,
         mensagem: mensagemSugerida(feitos.length, tentativas, temOrcamento, ultimoResultado),
+        aguardando: !!proximo?.enviada_em,
     };
 }
+
+// Confirmar uma reuniao nao abre espera: o resultado e registrado na hora.
+export const esperaResposta = (item: ItemContato) => item.mensagem !== 'confirmarReuniao';
+
+// O prazo de espera acabou quando a data de conferir ja chegou.
+export function prazoVencido(followup: FollowupResumo | null, agora: Date = new Date()): boolean {
+    if (!followup) return false;
+    const fimHoje = new Date(agora);
+    fimHoje.setHours(0, 0, 0, 0);
+    fimHoje.setDate(fimHoje.getDate() + 1);
+    return new Date(followup.scheduled_at) < fimHoje;
+}
+
+export const notaTentativa = (tentativas: number) => `Tentativa ${tentativas + 2} de ${LIMITE_TENTATIVAS + 1}`;
 
 // O contato de encerramento e o que vem depois das 3 tentativas sem resposta.
 export function contatoEncerra(tentativas: number): boolean {
@@ -281,6 +304,8 @@ export function organizarContatos<L extends LeadContato>(
     const hoje: ItemContato<L>[] = [];
     const atrasados: ItemContato<L>[] = [];
     const semContato: ItemContato<L>[] = [];
+    const conferir: ItemContato<L>[] = [];
+    const aguardando: ItemContato<L>[] = [];
     let agendadosDepois = 0;
     let casamentoPassado = 0;
 
@@ -296,10 +321,11 @@ export function organizarContatos<L extends LeadContato>(
             continue;
         }
         const quando = new Date(item.followup.scheduled_at);
-        if (quando >= fimHoje) agendadosDepois++;
+        if (item.aguardando) (quando >= fimHoje ? aguardando : conferir).push(item);
+        else if (quando >= fimHoje) agendadosDepois++;
         else if (quando >= inicioHoje) hoje.push(item);
         else atrasados.push(item);
     }
 
-    return { hoje, atrasados, semContato, agendadosDepois, casamentoPassado };
+    return { hoje, atrasados, semContato, conferir, aguardando, agendadosDepois, casamentoPassado };
 }
