@@ -1,8 +1,9 @@
 import React from 'react';
-import { ItemContato, LeadContato, linkWhatsApp, mensagemContato, organizarContatos } from '../leadContato';
+import { ItemContato, LeadContato, linkWhatsApp, mensagemContato, ordenarContatos, organizarContatos } from '../leadContato';
 
 interface FalarHojeProps<L extends LeadContato> {
     leads: L[];
+    ordem: string;
     loading: boolean;
     erro: string;
     ocupado: string | null;
@@ -15,7 +16,7 @@ interface FalarHojeProps<L extends LeadContato> {
 const formatarData = (valor: string) =>
     new Date(valor).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 
-function FalarHoje<L extends LeadContato>({ leads, loading, erro, ocupado, onAbrir, onOrcamento, onFeito, onPerdido }: FalarHojeProps<L>) {
+function FalarHoje<L extends LeadContato>({ leads, ordem, loading, erro, ocupado, onAbrir, onOrcamento, onFeito, onPerdido }: FalarHojeProps<L>) {
     const { hoje, atrasados, semContato, agendadosDepois, casamentoPassado } = organizarContatos(leads);
 
     if (erro) {
@@ -125,7 +126,7 @@ function FalarHoje<L extends LeadContato>({ leads, loading, erro, ocupado, onAbr
                 <h3 className={`font-display font-bold uppercase tracking-wider text-sm ${cor}`}>
                     {titulo} ({itens.length})
                 </h3>
-                {itens.map(renderItem)}
+                {ordenarContatos(itens, ordem).map(renderItem)}
             </section>
         );
 

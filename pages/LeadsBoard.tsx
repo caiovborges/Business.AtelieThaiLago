@@ -27,7 +27,7 @@ const LeadsBoard = () => {
     const [leadsWithProposals, setLeadsWithProposals] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [sortOption, setSortOption] = useState<string>('created_at_desc'); // Default sort
+    const [sortOption, setSortOption] = useState<string>('followup_desc');
     const [viewMode, setViewMode] = useState<'hoje' | 'funnel' | 'lost' | 'closed'>('hoje');
     const [erroLeads, setErroLeads] = useState('');
     const [leadOcupado, setLeadOcupado] = useState<string | null>(null);
@@ -217,6 +217,16 @@ const LeadsBoard = () => {
                 const dateB = b.event_date ? new Date(b.event_date).getTime() : 9999999999999;
                 return dateA - dateB;
             }
+            if (sortOption === 'followup_desc') {
+                const nextA = getNextFollowUp(a);
+                const nextB = getNextFollowUp(b);
+                if (nextA && nextB) {
+                    return new Date(nextB.scheduled_at).getTime() - new Date(nextA.scheduled_at).getTime();
+                }
+                if (nextA) return -1;
+                if (nextB) return 1;
+                return 0;
+            }
             if (sortOption === 'followup_asc') {
                 const nextA = getNextFollowUp(a);
                 const nextB = getNextFollowUp(b);
@@ -319,7 +329,8 @@ const LeadsBoard = () => {
                                 <option value="created_at_desc">Criado em (Recentes)</option>
                                 <option value="event_date_asc">Data do Evento (Próximos)</option>
                                 <option value="event_date_desc">Data do Evento (Distantes)</option>
-                                <option value="followup_asc">Próximo Follow-up</option>
+                                <option value="followup_desc">Follow-up (Mais recentes)</option>
+                                <option value="followup_asc">Follow-up (Mais antigos)</option>
                             </select>
                             <span className="absolute inset-y-0 right-3 flex items-center pointer-events-none material-symbols-outlined text-gray-500 text-sm">
                                 sort
@@ -342,6 +353,7 @@ const LeadsBoard = () => {
                         leads={leads.filter(l =>
                             l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             (l.email || '').toLowerCase().includes(searchTerm.toLowerCase()))}
+                        ordem={sortOption}
                         loading={loading}
                         erro={erroLeads}
                         ocupado={leadOcupado}

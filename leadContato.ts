@@ -15,6 +15,7 @@ export interface LeadContato {
     status: string;
     event_date: string | null;
     location: string | null;
+    created_at?: string;
     lead_followups?: FollowupResumo[];
 }
 
@@ -63,6 +64,31 @@ export function dataProximoContato(dias: number, agora: Date = new Date()): Date
     data.setDate(data.getDate() + dias);
     data.setHours(9, 0, 0, 0);
     return data;
+}
+
+// Mesmas opcoes do seletor de ordem. Quem nao tem o dado usado na ordem fica por ultimo.
+export function ordenarContatos<L extends LeadContato>(itens: ItemContato<L>[], ordem: string): ItemContato<L>[] {
+    const tempo = (valor: string | null | undefined) => (valor ? new Date(valor).getTime() : null);
+    const comparar = (a: number | null, b: number | null, sentido: 1 | -1) => {
+        if (a === null && b === null) return 0;
+        if (a === null) return 1;
+        if (b === null) return -1;
+        return (a - b) * sentido;
+    };
+    const dataEvento = (i: ItemContato<L>) => tempo(i.lead.event_date ? i.lead.event_date + 'T12:00:00' : null);
+    const contato = (i: ItemContato<L>) => tempo(i.followup?.scheduled_at);
+    const criado = (i: ItemContato<L>) => tempo(i.lead.created_at);
+
+    return [...itens].sort((a, b) => {
+        switch (ordem) {
+            case 'event_date_asc': return comparar(dataEvento(a), dataEvento(b), 1);
+            case 'event_date_desc': return comparar(dataEvento(a), dataEvento(b), -1);
+            case 'followup_asc': return comparar(contato(a), contato(b), 1);
+            case 'followup_desc': return comparar(contato(a), contato(b), -1);
+            case 'created_at_desc': return comparar(criado(a), criado(b), -1);
+            default: return 0;
+        }
+    });
 }
 
 export function organizarContatos<L extends LeadContato>(leads: L[], agora: Date = new Date()) {
