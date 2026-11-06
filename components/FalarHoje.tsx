@@ -86,7 +86,7 @@ function FalarHoje<L extends LeadContato>({ leads, loading, erro, ocupado, onAbr
                             onClick={() => onAbrir(lead)}
                             className="h-11 px-3 bg-white text-gray-500 border-2 border-gray-300 rounded-sm text-xs font-bold uppercase"
                         >
-                            Corrigir telefone
+                            Abrir perfil
                         </button>
                     )}
                     <button

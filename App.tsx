@@ -13,6 +13,7 @@ import ProposalStudio from './pages/ProposalStudio';
 import ProposalEditor from './pages/ProposalEditor';
 import Financeiro from './pages/Financeiro';
 import LeadsBoard from './pages/LeadsBoard';
+import LeadProfile from './pages/LeadProfile';
 import CalendarPage from './pages/CalendarPage';
 import Settings from './pages/Settings';
 
@@ -117,6 +118,7 @@ const App = () => {
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="leads" element={<LeadsBoard />} />
+              <Route path="leads/:id" element={<LeadProfile />} />
               <Route path="calendar" element={<CalendarPage />} />
               <Route path="clients" element={<ClientRegistry />} />
               <Route path="events" element={<EventCanvas />} />

@@ -13,18 +13,19 @@ interface LeadOrcamento {
 
 interface OrcamentoModalProps {
     lead: LeadOrcamento | null;
+    editarId?: string | null;
     onClose: () => void;
     onSalvo: (mensagem: string) => void;
 }
 
-interface ItemSalvo {
+export interface ItemSalvo {
     id: string;
     descricao: string;
     quantidade: number;
     valor_unitario: number;
 }
 
-interface OrcamentoSalvo {
+export interface OrcamentoSalvo {
     id: string;
     status: string;
     created_at: string;
@@ -50,10 +51,10 @@ const OPCOES_INICIAIS: Record<string, string[]> = {
     'Árvore de Digitais': ['Com moldura', 'Sem moldura'],
 };
 
-const CAMPOS_ORCAMENTO = 'id, status, created_at, tipo_servico, distancia_km, custo_deslocamento, incluir_deslocamento, observacoes, proposta_itens(id, descricao, quantidade, valor_unitario)';
+export const CAMPOS_ORCAMENTO = 'id, status, created_at, tipo_servico, distancia_km, custo_deslocamento, incluir_deslocamento, observacoes, proposta_itens(id, descricao, quantidade, valor_unitario)';
 
 const paraTexto = (valor: number | null | undefined) => (valor ? String(valor).replace('.', ',') : '');
-const itensComValor = (o: OrcamentoSalvo) => o.proposta_itens.filter(i => Number(i.valor_unitario) > 0);
+export const itensComValor = (o: OrcamentoSalvo) => o.proposta_itens.filter(i => Number(i.valor_unitario) > 0);
 const formatarData = (valor: string) => new Date(valor).toLocaleDateString('pt-BR');
 
 let contador = 0;
@@ -66,7 +67,7 @@ function opcoesDe(servico: string, base: OrcamentoSalvo | null): OpcaoForm[] {
     return nomes.map(nome => novaOpcao(nome));
 }
 
-const OrcamentoModal = ({ lead, onClose, onSalvo }: OrcamentoModalProps) => {
+const OrcamentoModal = ({ lead, editarId = null, onClose, onSalvo }: OrcamentoModalProps) => {
     const { user } = useAuth();
     const [historico, setHistorico] = useState<OrcamentoSalvo[]>([]);
     const [carregando, setCarregando] = useState(false);
@@ -81,6 +82,17 @@ const OrcamentoModal = ({ lead, onClose, onSalvo }: OrcamentoModalProps) => {
     const [erro, setErro] = useState('');
 
     const leadId = lead?.id;
+
+    const carregarParaEditar = (o: OrcamentoSalvo) => {
+        setServico(o.tipo_servico && SERVICOS.includes(o.tipo_servico) ? o.tipo_servico : 'Outros');
+        setDistancia(paraTexto(o.distancia_km));
+        setDeslocamento(paraTexto(o.custo_deslocamento));
+        setObservacoes(o.observacoes || '');
+        const qtd = itensComValor(o)[0]?.quantidade || 1;
+        setTelas(qtd > 1 ? String(qtd) : '');
+        setOpcoes(opcoesDe(o.tipo_servico || 'Outros', o));
+        setOrigem(`Editando o orçamento de ${formatarData(o.created_at)}.`);
+    };
 
     const preencher = async (novoServico: string, doLead: OrcamentoSalvo[]) => {
         setServico(novoServico);
@@ -130,13 +142,18 @@ const OrcamentoModal = ({ lead, onClose, onSalvo }: OrcamentoModalProps) => {
                 }
                 const lista = (data || []) as unknown as OrcamentoSalvo[];
                 setHistorico(lista);
+                const paraEditar = editarId ? lista.find(o => o.id === editarId) : null;
+                if (paraEditar) {
+                    carregarParaEditar(paraEditar);
+                    return;
+                }
                 const inicial = lista.find(o => o.tipo_servico && itensComValor(o).length > 0)?.tipo_servico
                     || (lead.services || []).find(s => SERVICOS.includes(s))
                     || SERVICOS[0];
                 preencher(inicial, lista);
             });
         return () => { atual = false; };
-    }, [leadId]);
+    }, [leadId, editarId]);
 
     if (!lead) return null;
 
@@ -166,19 +183,72 @@ const OrcamentoModal = ({ lead, onClose, onSalvo }: OrcamentoModalProps) => {
         }
 
         setSalvando(true);
+
+        const dadosOrcamento = {
+            titulo: `Orçamento - ${lead.name} - ${servico}`,
+            status: 'Enviada',
+            data_evento: lead.event_date || null,
+            tipo_servico: servico,
+            incluir_deslocamento: valorDeslocamento > 0,
+            distancia_km: parseValor(distancia),
+            custo_deslocamento: valorDeslocamento,
+            observacoes: observacoes.trim() || null,
+        };
+
+        const emEdicao = editarId ? historico.find(o => o.id === editarId) : null;
+        if (emEdicao) {
+            // Grava os itens novos antes de remover os antigos, para nunca ficar sem valores
+            const { data: novos, error: erroNovos } = await supabase
+                .from('proposta_itens')
+                .insert(preenchidas.map(o => ({ ...o, proposta_id: emEdicao.id })))
+                .select('id');
+            if (erroNovos || !novos) {
+                setErro('Erro ao salvar os valores. Nada foi alterado: ' + (erroNovos?.message || 'sem resposta'));
+                setSalvando(false);
+                return;
+            }
+            const desfazer = async () => {
+                const { error } = await supabase.from('proposta_itens').delete().in('id', novos.map(n => n.id));
+                return !error;
+            };
+            const { error: erroAtualizar } = await supabase
+                .from('propostas')
+                .update({ ...dadosOrcamento, updated_at: new Date().toISOString() })
+                .eq('id', emEdicao.id);
+            if (erroAtualizar) {
+                const desfeito = await desfazer();
+                setErro(desfeito
+                    ? 'Erro ao salvar o orçamento. Nada foi alterado: ' + erroAtualizar.message
+                    : 'Erro ao salvar o orçamento e os valores podem ter ficado duplicados. Confira antes de salvar de novo: ' + erroAtualizar.message);
+                setSalvando(false);
+                return;
+            }
+            if (emEdicao.proposta_itens.length > 0) {
+                const { error: erroAntigos } = await supabase
+                    .from('proposta_itens')
+                    .delete()
+                    .in('id', emEdicao.proposta_itens.map(i => i.id));
+                if (erroAntigos) {
+                    const desfeito = await desfazer();
+                    setErro(desfeito
+                        ? 'Erro ao atualizar os valores. Os valores anteriores foram mantidos: ' + erroAntigos.message
+                        : 'Erro ao atualizar os valores e eles podem ter ficado duplicados. Confira antes de salvar de novo: ' + erroAntigos.message);
+                    setSalvando(false);
+                    return;
+                }
+            }
+            setSalvando(false);
+            onSalvo('Orçamento atualizado.');
+            onClose();
+            return;
+        }
+
         const { data: proposta, error: erroProposta } = await supabase
             .from('propostas')
             .insert({
                 user_id: user.id,
                 lead_id: lead.id,
-                titulo: `Orçamento - ${lead.name} - ${servico}`,
-                status: 'Enviada',
-                data_evento: lead.event_date || null,
-                tipo_servico: servico,
-                incluir_deslocamento: valorDeslocamento > 0,
-                distancia_km: parseValor(distancia),
-                custo_deslocamento: valorDeslocamento,
-                observacoes: observacoes.trim() || null,
+                ...dadosOrcamento,
             })
             .select('id')
             .single();
@@ -221,7 +291,7 @@ const OrcamentoModal = ({ lead, onClose, onSalvo }: OrcamentoModalProps) => {
             <div className="bg-white w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl border-2 border-secondary" onClick={e => e.stopPropagation()}>
                 <header className="bg-secondary p-4 flex justify-between items-center sticky top-0 z-10 gap-4">
                     <div className="min-w-0">
-                        <h2 className="text-xl font-display font-bold text-white uppercase tracking-wider">Orçamento</h2>
+                        <h2 className="text-xl font-display font-bold text-white uppercase tracking-wider">{editarId ? 'Editar orçamento' : 'Orçamento'}</h2>
                         <p className="text-sm text-white/70 truncate">{lead.name}</p>
                     </div>
                     <button type="button" onClick={onClose} aria-label="Fechar" className="text-white hover:text-primary transition-colors">
@@ -299,10 +369,11 @@ const OrcamentoModal = ({ lead, onClose, onSalvo }: OrcamentoModalProps) => {
                     <button type="submit" disabled={salvando || carregando}
                         className="h-12 bg-primary text-white font-display font-bold uppercase tracking-wider border-2 border-secondary shadow-hard flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                         <span className="material-symbols-outlined text-[20px]">{salvando ? 'progress_activity' : 'save'}</span>
-                        Salvar orçamento
+                        {editarId ? 'Salvar alterações' : 'Salvar orçamento'}
                     </button>
                 </form>
 
+                {!editarId && (
                 <section className="px-4 md:px-6 pb-6 flex flex-col gap-3">
                     <h3 className="font-display font-bold uppercase tracking-wider text-sm text-secondary border-t-2 border-secondary/20 pt-4">
                         Histórico ({historico.length})
@@ -338,6 +409,7 @@ const OrcamentoModal = ({ lead, onClose, onSalvo }: OrcamentoModalProps) => {
                         );
                     })}
                 </section>
+                )}
             </div>
         </div>
     );

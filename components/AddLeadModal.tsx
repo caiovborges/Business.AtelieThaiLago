@@ -42,6 +42,7 @@ interface LeadModalProps {
     onClose: () => void;
     onSave: (lead: LeadFormData) => Promise<void>;
     editingLead?: EditingLead | null;
+    ocultarFollowups?: boolean;
 }
 
 export const PIPELINE_STAGES = [
@@ -67,7 +68,7 @@ export const SERVICES = [
     'Outro'
 ];
 
-const AddLeadModal = ({ isOpen, onClose, onSave, editingLead }: LeadModalProps) => {
+const AddLeadModal = ({ isOpen, onClose, onSave, editingLead, ocultarFollowups = false }: LeadModalProps) => {
     // Form State
     const [name, setName] = useState('');
     const [partnerName, setPartnerName] = useState('');
@@ -375,7 +376,7 @@ const AddLeadModal = ({ isOpen, onClose, onSave, editingLead }: LeadModalProps) 
                     </div>
                 </form>
 
-                {editingLead?.id && (
+                {editingLead?.id && !ocultarFollowups && (
                     <div className="px-4 md:px-8 pb-4 md:pb-8">
                         <LeadFollowups leadId={editingLead.id} />
                     </div>

@@ -12,6 +12,7 @@ interface FollowUp {
 
 interface LeadFollowupsProps {
     leadId: string;
+    onChange?: () => void;
 }
 
 const FOLLOWUP_TYPES = [
@@ -21,7 +22,7 @@ const FOLLOWUP_TYPES = [
     { value: 'Outro', icon: 'event_note' }
 ];
 
-const LeadFollowups = ({ leadId }: LeadFollowupsProps) => {
+const LeadFollowups = ({ leadId, onChange }: LeadFollowupsProps) => {
     const { user } = useAuth();
     const [followups, setFollowups] = useState<FollowUp[]>([]);
     const [loading, setLoading] = useState(true);
@@ -69,6 +70,7 @@ const LeadFollowups = ({ leadId }: LeadFollowupsProps) => {
             setNotes('');
             setDate('');
             fetchFollowups();
+            onChange?.();
         } else {
             alert('Erro ao agendar follow-up');
         }
@@ -80,12 +82,14 @@ const LeadFollowups = ({ leadId }: LeadFollowupsProps) => {
         setFollowups(prev => prev.map(f => f.id === id ? { ...f, done: !currentStatus } : f));
 
         await supabase.from('lead_followups').update({ done: !currentStatus }).eq('id', id);
+        onChange?.();
     };
 
     const handleDelete = async (id: string) => {
         if (!confirm('Excluir este agendamento?')) return;
         setFollowups(prev => prev.filter(f => f.id !== id));
         await supabase.from('lead_followups').delete().eq('id', id);
+        onChange?.();
     };
 
     // Group by status
@@ -180,7 +184,7 @@ const LeadFollowups = ({ leadId }: LeadFollowupsProps) => {
 
 const FollowUpItem = ({ item, onToggle, onDelete }: { item: FollowUp, onToggle: () => void, onDelete: () => void }) => {
     const icon = FOLLOWUP_TYPES.find(t => t.value === item.type)?.icon || 'event';
-    const isLate = new Date(item.scheduled_at) < new Date() && !item.done;
+    const isLate = new Date(item.scheduled_at).getTime() < new Date().setHours(0, 0, 0, 0) && !item.done;
 
     return (
         <div className={`flex items-center gap-3 p-3 border-2 ${isLate ? 'border-red-200 bg-red-50' : item.done ? 'border-gray-200 bg-gray-50' : 'border-secondary/20 bg-white'} transition-all`}>

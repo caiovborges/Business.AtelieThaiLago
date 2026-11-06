@@ -5,7 +5,8 @@ import { useAuth } from '../AuthContext';
 import AddLeadModal, { LeadFormData, EditingLead, PIPELINE_STAGES } from '../components/AddLeadModal';
 import FalarHoje from '../components/FalarHoje';
 import OrcamentoModal from '../components/OrcamentoModal';
-import { DIAS_APOS_LIMITE, ItemContato, dataProximoContato, diasAteProximoContato, linkWhatsApp, mensagemContato } from '../leadContato';
+import { ItemContato, linkWhatsApp, mensagemContato } from '../leadContato';
+import { marcarPerdido, registrarContatoFeito } from '../leadAcoes';
 
 // Status colors mapping
 const STATUS_COLORS: Record<string, string> = {
@@ -170,58 +171,21 @@ const LeadsBoard = () => {
         }
     };
 
-    const handleContatoFeito = async ({ lead, followup, contatosFeitos }: ItemContato<EditingLead>) => {
-        if (!user) return;
-        const feitos = contatosFeitos + 1;
-        let dias = diasAteProximoContato(feitos);
-        if (dias === null) {
-            if (window.confirm(`Já foram ${feitos} contatos com ${lead.name}. Marcar como Perdido? Se cancelar, agendo outro contato em ${DIAS_APOS_LIMITE} dias.`)) {
-                await handleConcluirPerdido(lead, followup?.id ?? null);
-                return;
-            }
-            dias = DIAS_APOS_LIMITE;
-        }
-
-        setLeadOcupado(lead.id);
+    const executarAcao = async (leadId: string, acao: () => Promise<string>) => {
+        setLeadOcupado(leadId);
         setAviso('');
-        if (followup) {
-            const { error } = await supabase.from('lead_followups').update({ done: true }).eq('id', followup.id);
-            if (error) {
-                alert('Erro ao marcar o contato como feito: ' + error.message);
-                setLeadOcupado(null);
-                return;
-            }
-        }
-        const proximo = dataProximoContato(dias);
-        const { error } = await supabase.from('lead_followups').insert({
-            user_id: user.id,
-            lead_id: lead.id,
-            type: 'WhatsApp',
-            scheduled_at: proximo.toISOString(),
-            notes: `Contato ${feitos + 1}`,
-            done: false,
-        });
-        if (error) {
-            alert('Contato marcado como feito, mas o próximo não foi agendado: ' + error.message);
-        } else {
-            setAviso(`${lead.name}: próximo contato em ${proximo.toLocaleDateString('pt-BR')}.`);
+        try {
+            setAviso(await acao());
+        } catch (e: any) {
+            alert(e.message);
         }
         await fetchLeads();
         setLeadOcupado(null);
     };
 
-    // Marca como perdido e encerra o contato pendente, para ele nao aparecer mais
-    const handleConcluirPerdido = async (lead: EditingLead, followupId: string | null) => {
-        setLeadOcupado(lead.id);
-        const { error } = await supabase.from('leads').update({ status: 'Perdido' }).eq('id', lead.id);
-        if (error) {
-            alert('Erro ao atualizar status: ' + error.message);
-        } else {
-            if (followupId) await supabase.from('lead_followups').update({ done: true }).eq('id', followupId);
-            setAviso(`${lead.name} marcado como Perdido.`);
-            await fetchLeads();
-        }
-        setLeadOcupado(null);
+    const handleContatoFeito = (item: ItemContato<EditingLead>) => {
+        if (!user) return;
+        executarAcao(item.lead.id, () => registrarContatoFeito(user.id, item));
     };
 
     const handleDragStart = (e: React.DragEvent, leadId: string) => {
@@ -412,12 +376,12 @@ const LeadsBoard = () => {
                         loading={loading}
                         erro={erroLeads}
                         ocupado={leadOcupado}
-                        onAbrir={(lead) => { setEditingLead(lead); setModalOpen(true); }}
+                        onAbrir={(lead) => navigate(`/leads/${lead.id}`)}
                         onOrcamento={setLeadOrcamento}
                         onFeito={handleContatoFeito}
                         onPerdido={(lead) => {
                             if (window.confirm(`Marcar ${lead.name} como Perdido?`)) {
-                                handleConcluirPerdido(lead, lead.lead_followups?.find(fu => !fu.done)?.id ?? null);
+                                executarAcao(lead.id, () => marcarPerdido(lead, lead.lead_followups?.find(fu => !fu.done)?.id ?? null));
                             }
                         }}
                     />
@@ -445,7 +409,7 @@ const LeadsBoard = () => {
                                     {filteredLeads.map(lead => (
                                         <tr key={lead.id} className="hover:bg-white/80 transition-colors group">
                                             <td className="p-4 pl-6">
-                                                <div className="font-bold text-secondary text-base">{lead.name}</div>
+                                                <button type="button" onClick={() => navigate(`/leads/${lead.id}`)} className="font-bold text-secondary text-base text-left hover:text-primary transition-colors">{lead.name}</button>
                                                 {lead.location && (
                                                     <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                                                         <span className="material-symbols-outlined text-[14px]">location_on</span>
@@ -525,7 +489,7 @@ const LeadsBoard = () => {
                                             draggable
                                             onDragStart={(e) => handleDragStart(e, lead.id)}
                                             className="bg-white border-2 border-secondary p-3 shadow-sm hover:shadow-hard-sm transition-all cursor-pointer group relative active:cursor-grabbing flex flex-col gap-3 rounded-sm"
-                                            onClick={() => { setEditingLead(lead); setModalOpen(true); }}
+                                            onClick={() => navigate(`/leads/${lead.id}`)}
                                         >
                                             {/* Top: Info */}
                                             <div>

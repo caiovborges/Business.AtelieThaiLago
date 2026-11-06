@@ -102,11 +102,6 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
             <span className="font-display text-sm font-bold uppercase tracking-wider">Financeiro</span>
           </NavLink>
 
-          <NavLink to="/proposals" onClick={onClose} className={({ isActive }) => getLinkClass(isActive)}>
-            <span className={`material-symbols-outlined ${getIconClass(location.pathname.startsWith('/proposals'))}`}>description</span>
-            <span className="font-display text-sm font-bold uppercase tracking-wider">Propostas</span>
-          </NavLink>
-
           {isAdmin && (
             <NavLink to="/settings" onClick={onClose} className={({ isActive }) => getLinkClass(isActive)}>
               <span className={`material-symbols-outlined ${getIconClass(location.pathname.startsWith('/settings'))}`}>settings</span>
