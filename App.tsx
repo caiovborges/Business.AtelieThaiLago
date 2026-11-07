@@ -16,6 +16,7 @@ import LeadsBoard from './pages/LeadsBoard';
 import LeadProfile from './pages/LeadProfile';
 import Mensagens from './pages/Mensagens';
 import AReceber from './pages/AReceber';
+import ContasFixas from './pages/ContasFixas';
 import { carregarMensagens } from './mensagensEditadas';
 import CalendarPage from './pages/CalendarPage';
 import Settings from './pages/Settings';
@@ -139,6 +140,7 @@ const App = () => {
               <Route path="proposals/:id" element={<ProposalEditor />} />
               <Route path="financeiro" element={<Financeiro />} />
               <Route path="a-receber" element={<AReceber />} />
+              <Route path="contas-fixas" element={<ContasFixas />} />
               <Route path="settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Route>

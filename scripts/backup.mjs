@@ -13,7 +13,7 @@ import { perguntarOculto } from './senha-oculta.mjs';
 const TABELAS = [
   'user_profiles', 'estados', 'cidades', 'categorias', 'clients', 'eventos',
   'transacoes', 'parcelas', 'leads', 'lead_followups', 'propostas', 'proposta_itens',
-  'mensagens_followup',
+  'mensagens_followup', 'contas_fixas', 'contas_fixas_meses',
 ];
 const POR_PAGINA = 1000;
 
