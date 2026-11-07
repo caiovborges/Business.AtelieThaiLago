@@ -106,6 +106,7 @@ const Dashboard = () => {
         .from('lead_followups')
         .select('id, scheduled_at, type, leads(name)')
         .eq('done', false)
+        .is('enviada_em', null)
         .order('scheduled_at', { ascending: true })
         .limit(5),
     ]);

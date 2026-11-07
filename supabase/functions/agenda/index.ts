@@ -41,6 +41,7 @@ const fonte: FonteAgenda = {
         .from('lead_followups')
         .select('id, lead_id, scheduled_at, notes, leads!inner(name, status)')
         .eq('done', false)
+        .is('enviada_em', null)
         .in('leads.status', ETAPAS_ATIVAS)
         .gte('scheduled_at', new Date(Date.now() - 86400000).toISOString()),
     ]);

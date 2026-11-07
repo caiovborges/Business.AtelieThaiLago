@@ -212,13 +212,16 @@ export function resumoContato<L extends LeadContato>(lead: L, temOrcamento: bool
 // Confirmar uma reuniao nao abre espera: o resultado e registrado na hora.
 export const esperaResposta = (item: ItemContato) => item.mensagem !== 'confirmarReuniao';
 
-// O prazo de espera acabou quando a data de conferir ja chegou.
-export function prazoVencido(followup: FollowupResumo | null, agora: Date = new Date()): boolean {
-    if (!followup) return false;
-    const fimHoje = new Date(agora);
-    fimHoje.setHours(0, 0, 0, 0);
-    fimHoje.setDate(fimHoje.getDate() + 1);
-    return new Date(followup.scheduled_at) < fimHoje;
+// Depois desta espera, o banco classifica sozinho como sem resposta.
+export const DIAS_AGUARDANDO_RESPOSTA = 3;
+
+export function fimDaEspera(agora: Date = new Date()): Date {
+    return new Date(agora.getTime() + DIAS_AGUARDANDO_RESPOSTA * 86400000);
+}
+
+// O banco roda a cada 15 minutos; passou da hora e continuou aqui, algo atrasou.
+export function esperaVencida(followup: FollowupResumo | null, agora: Date = new Date()): boolean {
+    return !!followup && new Date(followup.scheduled_at) <= agora;
 }
 
 export const notaTentativa = (tentativas: number) => `Tentativa ${tentativas + 2} de ${LIMITE_TENTATIVAS + 1}`;
@@ -228,6 +231,7 @@ export function contatoEncerra(tentativas: number): boolean {
     return tentativas >= LIMITE_TENTATIVAS;
 }
 
+// Os mesmos prazos estao em classificar_sem_resposta, no banco: mude nos dois.
 const PRAZOS_SEM_ORCAMENTO = [2, 25, 30];
 const PRAZOS_COM_ORCAMENTO = [7, 14, 30];
 export const DIAS_APOS_ORCAMENTO = 7;
@@ -304,9 +308,8 @@ export function organizarContatos<L extends LeadContato>(
     const hoje: ItemContato<L>[] = [];
     const atrasados: ItemContato<L>[] = [];
     const semContato: ItemContato<L>[] = [];
-    const conferir: ItemContato<L>[] = [];
     const aguardando: ItemContato<L>[] = [];
-    let agendadosDepois = 0;
+    const agendados: ItemContato<L>[] = [];
     let casamentoPassado = 0;
 
     for (const lead of leads) {
@@ -321,11 +324,11 @@ export function organizarContatos<L extends LeadContato>(
             continue;
         }
         const quando = new Date(item.followup.scheduled_at);
-        if (item.aguardando) (quando >= fimHoje ? aguardando : conferir).push(item);
-        else if (quando >= fimHoje) agendadosDepois++;
+        if (item.aguardando) aguardando.push(item);
+        else if (quando >= fimHoje) agendados.push(item);
         else if (quando >= inicioHoje) hoje.push(item);
         else atrasados.push(item);
     }
 
-    return { hoje, atrasados, semContato, conferir, aguardando, agendadosDepois, casamentoPassado };
+    return { hoje, atrasados, semContato, aguardando, agendados, casamentoPassado };
 }

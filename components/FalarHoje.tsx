@@ -1,7 +1,7 @@
 import React from 'react';
 import {
     ItemContato, LIMITE_TENTATIVAS, LeadContato, MENSAGENS, contatoEncerra, esperaResposta, linkConversa, linkWhatsApp, montarMensagem,
-    ordenarContatos, organizarContatos, prazoVencido, prioridadeContato,
+    esperaVencida, ordenarContatos, organizarContatos, prioridadeContato,
 } from '../leadContato';
 
 interface FalarHojeProps<L extends LeadContato> {
@@ -23,7 +23,7 @@ const formatarData = (valor: string) =>
     new Date(valor).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 
 function FalarHoje<L extends LeadContato>({ leads, ordem, loading, erro, ocupado, temOrcamento, onAbrir, onOrcamento, onFeito, onEnviada, onNaoRespondeu, onPerdido }: FalarHojeProps<L>) {
-    const { hoje, atrasados, semContato, conferir, aguardando, agendadosDepois, casamentoPassado } = organizarContatos(leads, new Date(), temOrcamento);
+    const { hoje, atrasados, semContato, aguardando, agendados, casamentoPassado } = organizarContatos(leads, new Date(), temOrcamento);
 
     if (erro) {
         return (
@@ -85,7 +85,7 @@ function FalarHoje<L extends LeadContato>({ leads, ordem, loading, erro, ocupado
                             <span className="font-mono font-bold text-orange-600">Agendado para {formatarData(followup.scheduled_at)}</span>
                         )}
                         {followup && emEspera && (
-                            <span className="font-mono font-bold text-orange-600">Conferir em {formatarData(followup.scheduled_at)}</span>
+                            <span className="font-mono font-bold text-orange-600">Sem resposta automático em {formatarData(followup.scheduled_at)}</span>
                         )}
                     </p>
                     {emEspera ? (
@@ -134,7 +134,7 @@ function FalarHoje<L extends LeadContato>({ leads, ordem, loading, erro, ocupado
                                 <span className="material-symbols-outlined text-[18px]">forum</span>
                                 Respondeu
                             </button>
-                            {prazoVencido(followup) && (
+                            {esperaVencida(followup) && (
                                 <button type="button" disabled={ocupado} onClick={() => onNaoRespondeu(item)} className={botaoSecundario}>
                                     <span className="material-symbols-outlined text-[18px]">schedule</span>
                                     Não respondeu
@@ -180,7 +180,7 @@ function FalarHoje<L extends LeadContato>({ leads, ordem, loading, erro, ocupado
             </section>
         );
 
-    const semPendencias = hoje.length + conferir.length + atrasados.length + semContato.length === 0;
+    const semPendencias = hoje.length + atrasados.length + semContato.length === 0;
 
     return (
         <div className="h-full overflow-y-auto flex flex-col gap-6 pb-8">
@@ -191,23 +191,22 @@ function FalarHoje<L extends LeadContato>({ leads, ordem, loading, erro, ocupado
                 </div>
             )}
             {grupo('Para hoje', hoje, 'text-primary')}
-            {grupo('Conferir resposta', conferir, 'text-orange-600')}
+            {grupo('Aguardando resposta', aguardando, 'text-orange-600')}
             {grupo('Atrasados', atrasados, 'text-red-600')}
             {grupo('Sem próximo contato', semContato, 'text-gray-600')}
-            {aguardando.length > 0 && (
+            {agendados.length > 0 && (
                 <details>
                     <summary className="cursor-pointer font-display font-bold uppercase tracking-wider text-sm text-gray-600">
-                        Aguardando resposta ({aguardando.length})
+                        Próximos follow-ups ({agendados.length})
                     </summary>
                     <div className="mt-3 flex flex-col gap-3">
-                        {ordenarContatos(aguardando, ordem).map(renderItem)}
+                        {ordenarContatos(agendados, ordem).map(renderItem)}
                     </div>
                 </details>
             )}
-            {(agendadosDepois > 0 || casamentoPassado > 0) && (
+            {casamentoPassado > 0 && (
                 <p className="text-xs text-gray-500 font-mono">
-                    {agendadosDepois > 0 && `${agendadosDepois} agendado${agendadosDepois > 1 ? 's' : ''} para os próximos dias. `}
-                    {casamentoPassado > 0 && `${casamentoPassado} fora da lista porque a data do casamento já passou; veja em Funil Ativo.`}
+                    {casamentoPassado} fora da lista porque a data do casamento já passou; veja em Funil Ativo.
                 </p>
             )}
         </div>

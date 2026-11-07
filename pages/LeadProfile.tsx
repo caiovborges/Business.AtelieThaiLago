@@ -6,7 +6,7 @@ import AddLeadModal, { EditingLead, LeadFormData, PIPELINE_STAGES } from '../com
 import LeadFollowups from '../components/LeadFollowups';
 import OrcamentoModal, { CAMPOS_ORCAMENTO, OrcamentoSalvo, itensComValor, rotuloQuantidade } from '../components/OrcamentoModal';
 import ResultadoContatoModal, { AlvoResultado } from '../components/ResultadoContatoModal';
-import { ChaveMensagem, FollowupResumo, LIMITE_TENTATIVAS, MENSAGENS, ROTULO_RESULTADO, dataDoContato, esperaResposta, feitosEmOrdem, linkConversa, linkWhatsApp, montarMensagem, prazoVencido, resumoContato, temOrcamentoLead } from '../leadContato';
+import { ChaveMensagem, FollowupResumo, LIMITE_TENTATIVAS, MENSAGENS, ROTULO_RESULTADO, dataDoContato, esperaResposta, feitosEmOrdem, esperaVencida, linkConversa, linkWhatsApp, montarMensagem, resumoContato, temOrcamentoLead } from '../leadContato';
 import { mensagemEnviada, naoRespondeu } from '../leadAcoes';
 import FecharLeadModal from '../components/FecharLeadModal';
 import { abrirContrato, enviarContrato, removerContrato } from '../contratos';
@@ -239,7 +239,7 @@ const LeadProfile = () => {
                                     <span className="material-symbols-outlined text-[18px]">forum</span>
                                     Respondeu
                                 </button>
-                                {prazoVencido(proximo) && (
+                                {esperaVencida(proximo) && (
                                     <button type="button" disabled={ocupado} onClick={() => { setMensagemEscolhida(''); executar(() => naoRespondeu(resumo)); }} className={`${botao} bg-white text-secondary hover:bg-gray-50`}>
                                         <span className="material-symbols-outlined text-[18px]">schedule</span>
                                         Não respondeu
@@ -352,7 +352,7 @@ const LeadProfile = () => {
 
                     <dl className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         {resumo.aguardando && <Dado rotulo="Mensagem enviada em">{dataCurta(proximo!.enviada_em!)}</Dado>}
-                        <Dado rotulo={resumo.aguardando ? 'Conferir resposta em' : 'Próximo contato'}>
+                        <Dado rotulo={resumo.aguardando ? 'Sem resposta automático em' : 'Próximo contato'}>
                             {proximo ? (
                                 <span className={atrasado ? 'font-bold text-red-600' : 'font-bold'}>
                                     {dataCurta(proximo.scheduled_at)}{atrasado ? ' (atrasado)' : ''}

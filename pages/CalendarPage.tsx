@@ -78,7 +78,8 @@ const CalendarPage = () => {
                 notes,
                 done,
                 leads (name)
-            `);
+            `)
+            .or('enviada_em.is.null,done.eq.true');
 
         if (followups) {
             followups.forEach((fu: any) => {
