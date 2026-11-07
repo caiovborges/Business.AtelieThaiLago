@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
 import EventModal, { EventFormData, EditingEvent } from '../components/EventModal';
+import { abrirContrato } from '../contratos';
 
 const STATUS_COLORS: Record<string, string> = {
    'Confirmado': 'bg-blue-100 text-blue-800 border-blue-300',
@@ -36,6 +37,7 @@ interface SupabaseEvento {
 }
 
 const ALL_STATUSES = ['Todos', 'Confirmado', 'Concluído', 'Cancelado', 'Orçamento'];
+const FILTROS_CONTRATO = ['Todos', 'Com contrato', 'Sem contrato'];
 
 const EventCanvas = () => {
    const navigate = useNavigate();
@@ -43,6 +45,7 @@ const EventCanvas = () => {
    const [events, setEvents] = useState<SupabaseEvento[]>([]);
    const [loading, setLoading] = useState(true);
    const [filter, setFilter] = useState('Todos');
+   const [filtroContrato, setFiltroContrato] = useState('Todos');
    const [searchTerm, setSearchTerm] = useState('');
    const [modalOpen, setModalOpen] = useState(false);
    const [editingEvent, setEditingEvent] = useState<EditingEvent | null>(null);
@@ -142,8 +145,11 @@ const EventCanvas = () => {
       await fetchEvents();
    };
 
+   const contratoBate = (event: SupabaseEvento, opcao: string) =>
+      opcao === 'Todos' || (opcao === 'Com contrato') === !!event.contrato_url;
+
    const filteredEvents = events.filter(event => {
-      const matchesStatus = filter === 'Todos' || event.status === filter;
+      const matchesStatus = (filter === 'Todos' || event.status === filter) && contratoBate(event, filtroContrato);
       const matchesSearch = !searchTerm ||
          event.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
          (event.clients?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -161,6 +167,18 @@ const EventCanvas = () => {
       if (!groupedEvents[key]) groupedEvents[key] = [];
       groupedEvents[key].push(event);
    });
+
+   // A contagem respeita o status e a busca, para bater com o que a lista vai mostrar.
+   const quantosComContrato = (opcao: string) => events.filter(event =>
+      (filter === 'Todos' || event.status === filter) &&
+      contratoBate(event, opcao) &&
+      (!searchTerm ||
+         event.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+         (event.clients?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+         (event.local || '').toLowerCase().includes(searchTerm.toLowerCase()))
+   ).length;
+
+   const temFiltro = !!searchTerm || filter !== 'Todos' || filtroContrato !== 'Todos';
 
    const formatDate = (dateStr: string | null) => {
       if (!dateStr) return { day: '\u2014', month: '', weekday: '' };
@@ -216,6 +234,21 @@ const EventCanvas = () => {
                </div>
             </div>
 
+            <div className="flex flex-wrap items-center gap-2 -mt-4 mb-8" role="group" aria-label="Filtrar por contrato">
+               <span className="font-mono text-xs font-bold text-gray-500 uppercase tracking-wider mr-1">Contrato</span>
+               {FILTROS_CONTRATO.map((opcao) => (
+                  <button
+                     key={opcao}
+                     type="button"
+                     aria-pressed={filtroContrato === opcao}
+                     onClick={() => setFiltroContrato(opcao)}
+                     className={`h-9 px-3 border-2 border-secondary rounded-sm font-display font-bold text-xs transition-colors ${filtroContrato === opcao ? 'bg-secondary text-white' : 'bg-white text-secondary hover:bg-gray-50'}`}
+                  >
+                     {opcao} ({quantosComContrato(opcao)})
+                  </button>
+               ))}
+            </div>
+
             {/* Content */}
             {loading ? (
                <div className="flex items-center justify-center py-20">
@@ -228,14 +261,14 @@ const EventCanvas = () => {
                <div className="flex flex-col items-center justify-center py-20 text-center">
                   <span className="material-symbols-outlined text-6xl text-gray-300 mb-4">event_busy</span>
                   <h3 className="font-display text-xl font-bold text-secondary mb-1">
-                     {searchTerm || filter !== 'Todos' ? 'Nenhum evento encontrado' : 'Nenhum evento cadastrado'}
+                     {temFiltro ? 'Nenhum evento encontrado' : 'Nenhum evento cadastrado'}
                   </h3>
                   <p className="font-body text-gray-500 mb-6">
-                     {searchTerm || filter !== 'Todos'
+                     {temFiltro
                         ? 'Tente buscar com outros termos ou remover os filtros.'
                         : 'Comece criando seu primeiro evento!'}
                   </p>
-                  {!searchTerm && filter === 'Todos' && (
+                  {!temFiltro && (
                      <button onClick={handleNewEvent} className="px-6 py-3 border-2 border-secondary bg-primary text-white font-display font-bold text-sm uppercase tracking-wider shadow-hard hover:shadow-hard-hover hover:-translate-y-0.5 transition-all flex items-center gap-2">
                         <span className="material-symbols-outlined text-lg">add</span>
                         Novo Evento
@@ -297,10 +330,22 @@ const EventCanvas = () => {
                                                 {event.local ? `${event.local}${cidadeEstado ? ` \u00b7 ${cidadeEstado}` : ''}` : cidadeEstado}
                                              </span>
                                           )}
-                                          {event.contrato_url && (
-                                             <span className="flex items-center gap-1 text-[11px] font-mono text-green-600">
-                                                <span className="material-symbols-outlined text-[14px]">attach_file</span>
-                                                Contrato
+                                          {event.contrato_url ? (
+                                             <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                   e.stopPropagation();
+                                                   abrirContrato(event.contrato_url!).catch((falha) => alert(falha.message));
+                                                }}
+                                                className="flex items-center gap-1 px-2 py-1 bg-green-50 border border-green-600 text-[11px] font-mono font-bold text-green-700 hover:bg-green-100 transition-colors"
+                                             >
+                                                <span className="material-symbols-outlined text-[14px]">description</span>
+                                                Abrir contrato
+                                             </button>
+                                          ) : (
+                                             <span className="flex items-center gap-1 text-[11px] font-mono text-gray-500">
+                                                <span className="material-symbols-outlined text-[14px]">draft</span>
+                                                Sem contrato
                                              </span>
                                           )}
                                        </div>
