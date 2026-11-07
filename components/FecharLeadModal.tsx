@@ -4,6 +4,9 @@ import { useAuth } from '../AuthContext';
 import { CAMPOS_ORCAMENTO, OrcamentoSalvo, itensComValor } from './OrcamentoModal';
 import { enviarContrato, removerContrato } from '../contratos';
 import { formatarReais, parseValor } from '../valores';
+import EditorParcelas from './EditorParcelas';
+import { CategoriaLancamento } from '../lancamentos';
+import { LinhaParcela, categoriaDoServico, erroDasLinhas, salvarLinhas } from '../parcelas';
 
 interface LeadFechar {
     id: string;
@@ -30,6 +33,10 @@ const FecharLeadModal = ({ lead, onClose, onFechado }: FecharLeadModalProps) => 
     const [valor, setValor] = useState('');
     const [deslocamento, setDeslocamento] = useState('');
     const [contrato, setContrato] = useState<File | null>(null);
+    const [categorias, setCategorias] = useState<CategoriaLancamento[]>([]);
+    const [parcelar, setParcelar] = useState(false);
+    const [linhas, setLinhas] = useState<LinhaParcela[]>([]);
+    const [categoriaId, setCategoriaId] = useState('');
     const [carregando, setCarregando] = useState(false);
     const [salvando, setSalvando] = useState(false);
     const [erro, setErro] = useState('');
@@ -47,6 +54,9 @@ const FecharLeadModal = ({ lead, onClose, onFechado }: FecharLeadModalProps) => 
         setValor('');
         setDeslocamento('');
         setContrato(null);
+        setParcelar(false);
+        setLinhas([]);
+        setCategoriaId('');
         setEventosNaData([]);
         setCarregando(true);
 
@@ -55,9 +65,11 @@ const FecharLeadModal = ({ lead, onClose, onFechado }: FecharLeadModalProps) => 
             dataLead
                 ? supabase.from('eventos').select('nome').eq('data_evento', dataLead).neq('status', 'Cancelado')
                 : Promise.resolve({ data: [] as { nome: string }[], error: null }),
-        ]).then(([orcamentos, eventos]) => {
+            supabase.from('categorias').select('*').order('nome'),
+        ]).then(([orcamentos, eventos, listaCategorias]) => {
             if (!atual) return;
             setCarregando(false);
+            setCategorias((listaCategorias.data || []) as CategoriaLancamento[]);
             if (orcamentos.error) {
                 setErro('Não foi possível carregar o orçamento: ' + orcamentos.error.message);
                 return;
@@ -108,6 +120,13 @@ const FecharLeadModal = ({ lead, onClose, onFechado }: FecharLeadModalProps) => 
             setErro('Informe o valor fechado.');
             return;
         }
+        if (parcelar) {
+            const invalido = erroDasLinhas(linhas);
+            if (invalido) {
+                setErro(invalido);
+                return;
+            }
+        }
 
         setSalvando(true);
         let caminho: string | null = null;
@@ -136,6 +155,15 @@ const FecharLeadModal = ({ lead, onClose, onFechado }: FecharLeadModalProps) => 
                 : 'Não foi possível fechar o lead. Nada foi criado: ' + (error?.message || 'sem resposta'));
             setSalvando(false);
             return;
+        }
+
+        if (parcelar) {
+            try {
+                await salvarLinhas(data as string, linhas, categoriaId ? Number(categoriaId) : null);
+            } catch (falha: any) {
+                // O lead ja foi fechado; as parcelas podem ser criadas depois no evento.
+                alert(`O lead foi fechado, mas as parcelas não foram salvas. Crie-as no financeiro do evento. ${falha.message}`);
+            }
         }
 
         setSalvando(false);
@@ -210,6 +238,26 @@ const FecharLeadModal = ({ lead, onClose, onFechado }: FecharLeadModalProps) => 
                     {deslocamentoOrcamento > 0 && escolha !== OUTRO && (
                         <p className="text-xs text-gray-500 font-mono -mt-2">O valor total já inclui {formatarReais(deslocamentoOrcamento)} de deslocamento.</p>
                     )}
+
+                    <div className="flex flex-col gap-3">
+                        <label className="flex items-center gap-2 text-sm font-bold text-secondary cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={parcelar}
+                                onChange={e => {
+                                    setParcelar(e.target.checked);
+                                    if (e.target.checked && !categoriaId) {
+                                        const sugerida = categoriaDoServico(categorias, servico);
+                                        if (sugerida) setCategoriaId(String(sugerida));
+                                    }
+                                }}
+                            />
+                            Definir as parcelas agora
+                        </label>
+                        {parcelar && (
+                            <EditorParcelas total={parseValor(valor)} linhas={linhas} onLinhas={setLinhas} categorias={categorias} categoriaId={categoriaId} onCategoria={setCategoriaId} />
+                        )}
+                    </div>
 
                     <div>
                         <label htmlFor="fechar-contrato" className={estiloRotulo}>Contrato</label>

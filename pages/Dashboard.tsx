@@ -5,7 +5,7 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
 import { parseValor } from '../valores';
 import LancamentoModal from '../components/LancamentoModal';
-import { excluirLancamento } from '../lancamentos';
+import { dataLocal, excluirLancamento } from '../lancamentos';
 
 interface Categoria {
   id: number;
@@ -61,7 +61,7 @@ const Dashboard = () => {
 
   // Add transaction form
   const [addTipo, setAddTipo] = useState<'receita' | 'despesa'>('receita');
-  const [addDate, setAddDate] = useState('');
+  const [addDate, setAddDate] = useState(dataLocal());
   const [addDesc, setAddDesc] = useState('');
   const [addCatId, setAddCatId] = useState('');
   const [addAmount, setAddAmount] = useState('');
@@ -149,7 +149,7 @@ const Dashboard = () => {
   })();
 
   const handleAddTransaction = async () => {
-    if (!addDesc.trim() || !addAmount || !user) return;
+    if (!addDate || !addDesc.trim() || !addAmount || !user) return;
     setAdding(true);
     const { error } = await supabase.from('transacoes').insert({
       user_id: user.id,
@@ -158,13 +158,13 @@ const Dashboard = () => {
       descricao: addDesc.trim(),
       categoria_id: addCatId ? Number(addCatId) : null,
       valor: parseValor(addAmount),
-      data: addDate || null,
+      data: addDate,
     });
     if (error) {
       console.error('Erro ao salvar transação:', error);
       alert('Erro ao salvar: ' + error.message);
     } else {
-      setAddDate(''); setAddDesc(''); setAddCatId(''); setAddAmount('');
+      setAddDate(dataLocal()); setAddDesc(''); setAddCatId(''); setAddAmount('');
       await fetchData();
     }
     setAdding(false);
@@ -545,7 +545,7 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              <button type="button" onClick={handleAddTransaction} disabled={adding || !addDesc.trim() || !addAmount}
+              <button type="button" onClick={handleAddTransaction} disabled={adding || !addDate || !addDesc.trim() || !addAmount}
                 className={`w-full mt-4 flex items-center justify-center gap-2 bg-white border-2 font-display font-bold text-sm py-3 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${addTipo === 'receita'
                   ? 'border-accent-success text-accent-success hover:bg-accent-success hover:text-white shadow-[2px_2px_0px_0px_#00C896] hover:shadow-none hover:translate-x-[1px] hover:translate-y-[1px]'
                   : 'border-accent-error text-accent-error hover:bg-accent-error hover:text-white shadow-[2px_2px_0px_0px_#FF4D4D] hover:shadow-none hover:translate-x-[1px] hover:translate-y-[1px]'

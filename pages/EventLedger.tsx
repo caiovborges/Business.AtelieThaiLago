@@ -4,7 +4,8 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
 import { parseValor } from '../valores';
 import LancamentoModal from '../components/LancamentoModal';
-import { excluirLancamento } from '../lancamentos';
+import { dataLocal, excluirLancamento } from '../lancamentos';
+import ParcelasEvento from '../components/ParcelasEvento';
 
 interface Categoria {
    id: number;
@@ -27,6 +28,7 @@ interface Evento {
    nome: string;
    status: string;
    data_evento: string | null;
+   servico?: string | string[] | null;
    clients?: { name: string } | null;
    cidades?: { nome: string; estados?: { sigla: string } } | null;
 }
@@ -50,14 +52,14 @@ const EventLedger = () => {
    const [editando, setEditando] = useState<Transacao | null>(null);
 
    // Income form
-   const [incDate, setIncDate] = useState('');
+   const [incDate, setIncDate] = useState(dataLocal());
    const [incDesc, setIncDesc] = useState('');
    const [incCatId, setIncCatId] = useState<string>('');
    const [incAmount, setIncAmount] = useState('');
    const [addingInc, setAddingInc] = useState(false);
 
    // Expense form
-   const [expDate, setExpDate] = useState('');
+   const [expDate, setExpDate] = useState(dataLocal());
    const [expDesc, setExpDesc] = useState('');
    const [expCatId, setExpCatId] = useState<string>('');
    const [expAmount, setExpAmount] = useState('');
@@ -89,7 +91,7 @@ const EventLedger = () => {
       const [eventoRes, transRes, catRes] = await Promise.all([
          supabase
             .from('eventos')
-            .select('id, nome, status, data_evento, clients(name), cidades(nome, estados(sigla))')
+            .select('id, nome, status, data_evento, servico, clients(name), cidades(nome, estados(sigla))')
             .eq('id', id)
             .single(),
          supabase
@@ -114,7 +116,7 @@ const EventLedger = () => {
    }, [id]);
 
    const handleAddReceita = async () => {
-      if (!incDesc.trim() || !incAmount || !user || !id) return;
+      if (!incDate || !incDesc.trim() || !incAmount || !user || !id) return;
       setAddingInc(true);
       const { error } = await supabase.from('transacoes').insert({
          evento_id: id,
@@ -123,20 +125,20 @@ const EventLedger = () => {
          descricao: incDesc.trim(),
          categoria_id: incCatId ? Number(incCatId) : null,
          valor: parseValor(incAmount),
-         data: incDate || null,
+         data: incDate,
       });
       if (error) {
          console.error('Erro ao salvar receita:', error);
          alert('Erro ao salvar: ' + error.message);
       } else {
-         setIncDate(''); setIncDesc(''); setIncCatId(''); setIncAmount('');
+         setIncDate(dataLocal()); setIncDesc(''); setIncCatId(''); setIncAmount('');
          await fetchData();
       }
       setAddingInc(false);
    };
 
    const handleAddDespesa = async () => {
-      if (!expDesc.trim() || !expAmount || !user || !id) return;
+      if (!expDate || !expDesc.trim() || !expAmount || !user || !id) return;
       setAddingExp(true);
       const { error } = await supabase.from('transacoes').insert({
          evento_id: id,
@@ -145,13 +147,13 @@ const EventLedger = () => {
          descricao: expDesc.trim(),
          categoria_id: expCatId ? Number(expCatId) : null,
          valor: parseValor(expAmount),
-         data: expDate || null,
+         data: expDate,
       });
       if (error) {
          console.error('Erro ao salvar despesa:', error);
          alert('Erro ao salvar: ' + error.message);
       } else {
-         setExpDate(''); setExpDesc(''); setExpCatId(''); setExpAmount('');
+         setExpDate(dataLocal()); setExpDesc(''); setExpCatId(''); setExpAmount('');
          await fetchData();
       }
       setAddingExp(false);
@@ -390,9 +392,9 @@ const EventLedger = () => {
                </div>
             </header>
 
-            <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+            <main className="flex-1 min-h-0 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden relative">
                {/* Receita (Income) */}
-               <section className="flex-1 flex flex-col border-b-2 md:border-b-0 md:border-r-2 border-secondary bg-white/50 relative">
+               <section className="flex-none md:flex-1 md:min-h-0 md:min-w-0 flex flex-col border-b-2 md:border-b-0 md:border-r-2 border-secondary bg-white/50 relative">
                   <div className="flex-none p-6 pb-2 flex items-center justify-between">
                      <div className="flex items-center gap-2">
                         <div className="h-2 w-2 rounded-full bg-accent-success"></div>
@@ -403,7 +405,16 @@ const EventLedger = () => {
                      </span>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto p-6 pt-2 space-y-4">
+                  <div className="md:flex-1 md:min-h-0 md:overflow-y-auto p-4 md:p-6 pt-2 md:pt-2 space-y-4">
+                     <ParcelasEvento
+                        eventoId={evento.id}
+                        eventoNome={evento.nome}
+                        servico={evento.servico}
+                        recebido={totalReceita}
+                        categorias={categorias}
+                        onReceitasMudaram={fetchData}
+                     />
+
                      {receitas.map(item => (
                         <div key={item.id} className="group bg-white border-2 border-secondary p-4 shadow-sm hover:shadow-hard-dark transition-all duration-200">
                            <div className="flex justify-between items-start mb-2">
@@ -498,7 +509,7 @@ const EventLedger = () => {
                         </div>
                         <button
                            onClick={handleAddReceita}
-                           disabled={addingInc || !incDesc.trim() || !incAmount}
+                           disabled={addingInc || !incDate || !incDesc.trim() || !incAmount}
                            className="w-full mt-3 flex items-center justify-center gap-2 bg-white border-2 border-accent-success text-accent-success font-display font-bold text-sm py-2 hover:bg-accent-success hover:text-white transition-all shadow-[2px_2px_0px_0px_#00C896] hover:shadow-none hover:translate-x-[1px] hover:translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                            {addingInc ? (
@@ -513,7 +524,7 @@ const EventLedger = () => {
                </section>
 
                {/* Despesas (Expenses) */}
-               <section className="flex-1 flex flex-col bg-background-light relative">
+               <section className="flex-none md:flex-1 md:min-h-0 md:min-w-0 flex flex-col bg-background-light relative">
                   <div className="flex-none p-6 pb-2 flex items-center justify-between">
                      <div className="flex items-center gap-2">
                         <div className="h-2 w-2 rounded-full bg-accent-error"></div>
@@ -524,7 +535,7 @@ const EventLedger = () => {
                      </span>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto p-6 pt-2 space-y-4">
+                  <div className="md:flex-1 md:min-h-0 md:overflow-y-auto p-4 md:p-6 pt-2 md:pt-2 space-y-4">
                      {despesas.map(item => (
                         <div key={item.id} className="group bg-white border-2 border-secondary p-4 shadow-sm hover:shadow-hard-dark transition-all duration-200">
                            <div className="flex justify-between items-start mb-2">
@@ -619,7 +630,7 @@ const EventLedger = () => {
                         </div>
                         <button
                            onClick={handleAddDespesa}
-                           disabled={addingExp || !expDesc.trim() || !expAmount}
+                           disabled={addingExp || !expDate || !expDesc.trim() || !expAmount}
                            className="w-full mt-3 flex items-center justify-center gap-2 bg-white border-2 border-accent-error text-accent-error font-display font-bold text-sm py-2 hover:bg-accent-error hover:text-white transition-all shadow-[2px_2px_0px_0px_#FF4D4D] hover:shadow-none hover:translate-x-[1px] hover:translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                            {addingExp ? (
