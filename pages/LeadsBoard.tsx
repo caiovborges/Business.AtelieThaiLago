@@ -7,7 +7,7 @@ import FalarHoje from '../components/FalarHoje';
 import OrcamentoModal from '../components/OrcamentoModal';
 import FecharLeadModal from '../components/FecharLeadModal';
 import ResultadoContatoModal, { AlvoResultado } from '../components/ResultadoContatoModal';
-import { linkConversa, linkWhatsApp, montarMensagem, resumoContato, temOrcamentoLead } from '../leadContato';
+import { linkConversa, linkWhatsApp, montarMensagem, organizarContatos, resumoContato, temOrcamentoLead } from '../leadContato';
 import { mensagemEnviada, naoRespondeu } from '../leadAcoes';
 
 // Status colors mapping
@@ -29,7 +29,7 @@ const LeadsBoard = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [sortOption, setSortOption] = useState<string>('prioridade');
-    const [viewMode, setViewMode] = useState<'hoje' | 'funnel' | 'lost' | 'closed'>('hoje');
+    const [viewMode, setViewMode] = useState<'hoje' | 'aguardando' | 'funnel' | 'lost' | 'closed'>('hoje');
     const [erroLeads, setErroLeads] = useState('');
     const [alvoResultado, setAlvoResultado] = useState<AlvoResultado<EditingLead> | null>(null);
     const [aviso, setAviso] = useState('');
@@ -260,13 +260,20 @@ const LeadsBoard = () => {
 
                 {/* Filters Row */}
                 <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-secondary/5 p-3 rounded-lg border border-secondary/10">
-                    <div className="flex gap-2 overflow-x-auto w-full xl:w-auto pb-2 xl:pb-0 hide-scrollbar shrink-0">
+                    <div className="flex flex-wrap xl:flex-nowrap gap-2 w-full xl:w-auto shrink-0">
                         <button
                             onClick={() => setViewMode('hoje')}
                             className={`shrink-0 px-4 py-2 rounded-sm font-bold text-sm uppercase transition-all flex items-center gap-2 ${viewMode === 'hoje' ? 'bg-primary text-white shadow-md' : 'bg-white text-primary hover:bg-primary/10'}`}
                         >
                             <span className="material-symbols-outlined text-[18px]">today</span>
                             Falar Hoje
+                        </button>
+                        <button
+                            onClick={() => setViewMode('aguardando')}
+                            className={`shrink-0 px-4 py-2 rounded-sm font-bold text-sm uppercase transition-all flex items-center gap-2 ${viewMode === 'aguardando' ? 'bg-orange-600 text-white shadow-md' : 'bg-white text-orange-600 hover:bg-orange-50'}`}
+                        >
+                            <span className="material-symbols-outlined text-[18px]">hourglass_top</span>
+                            Aguardando ({organizarContatos(leads, new Date(), temOrcamento).aguardando.length})
                         </button>
                         <button
                             onClick={() => setViewMode('funnel')}
@@ -328,14 +335,15 @@ const LeadsBoard = () => {
 
             {/* Content Area */}
             <div className="flex-1 overflow-hidden p-4 md:p-8 z-10 w-full relative">
-                {aviso && (viewMode === 'hoje' || viewMode === 'funnel') && (
+                {aviso && (viewMode === 'hoje' || viewMode === 'aguardando' || viewMode === 'funnel') && (
                     <div className="mb-4 p-3 bg-accent-success/10 border-2 border-accent-success text-accent-success text-sm font-medium flex items-center gap-2">
                         <span className="material-symbols-outlined text-lg">check_circle</span>
                         {aviso}
                     </div>
                 )}
-                {viewMode === 'hoje' ? (
+                {(viewMode === 'hoje' || viewMode === 'aguardando') ? (
                     <FalarHoje<EditingLead>
+                        visao={viewMode}
                         leads={leads.filter(l =>
                             l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             (l.email || '').toLowerCase().includes(searchTerm.toLowerCase()))}

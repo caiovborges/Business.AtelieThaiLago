@@ -1,11 +1,13 @@
 import React from 'react';
 import {
-    ItemContato, LIMITE_TENTATIVAS, LeadContato, MENSAGENS, contatoEncerra, esperaResposta, linkConversa, linkWhatsApp, montarMensagem,
+    DIAS_AGUARDANDO_RESPOSTA, ItemContato, LIMITE_TENTATIVAS, LeadContato, MENSAGENS, contatoEncerra, esperaResposta, linkConversa, linkWhatsApp, montarMensagem,
     esperaVencida, ordenarContatos, organizarContatos, prioridadeContato,
 } from '../leadContato';
 
 interface FalarHojeProps<L extends LeadContato> {
     leads: L[];
+    // Na aba Aguardando, a lista mostra so quem espera resposta
+    visao?: 'hoje' | 'aguardando';
     ordem: string;
     loading: boolean;
     erro: string;
@@ -22,7 +24,7 @@ interface FalarHojeProps<L extends LeadContato> {
 const formatarData = (valor: string) =>
     new Date(valor).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 
-function FalarHoje<L extends LeadContato>({ leads, ordem, loading, erro, ocupado, temOrcamento, onAbrir, onOrcamento, onFeito, onEnviada, onNaoRespondeu, onPerdido }: FalarHojeProps<L>) {
+function FalarHoje<L extends LeadContato>({ leads, visao = 'hoje', ordem, loading, erro, ocupado, temOrcamento, onAbrir, onOrcamento, onFeito, onEnviada, onNaoRespondeu, onPerdido }: FalarHojeProps<L>) {
     const { hoje, atrasados, semContato, aguardando, agendados, casamentoPassado } = organizarContatos(leads, new Date(), temOrcamento);
 
     if (erro) {
@@ -182,6 +184,24 @@ function FalarHoje<L extends LeadContato>({ leads, ordem, loading, erro, ocupado
 
     const semPendencias = hoje.length + atrasados.length + semContato.length === 0;
 
+    if (visao === 'aguardando') {
+        return (
+            <div className="h-full overflow-y-auto flex flex-col gap-4 pb-8">
+                <p className="text-sm text-gray-600">
+                    Mensagem enviada, esperando o retorno. Quando responderem, clique em Respondeu. Sem resposta em {DIAS_AGUARDANDO_RESPOSTA} dias, o lead é classificado sozinho e o próximo follow-up fica agendado.
+                </p>
+                {aguardando.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                        <span className="material-symbols-outlined text-6xl text-gray-300 mb-4">hourglass_empty</span>
+                        <h3 className="font-display text-xl font-bold text-secondary">Nenhum lead aguardando resposta</h3>
+                    </div>
+                ) : (
+                    ordenarContatos(aguardando, ordem).map(renderItem)
+                )}
+            </div>
+        );
+    }
+
     return (
         <div className="h-full overflow-y-auto flex flex-col gap-6 pb-8">
             {semPendencias && (
@@ -191,7 +211,6 @@ function FalarHoje<L extends LeadContato>({ leads, ordem, loading, erro, ocupado
                 </div>
             )}
             {grupo('Para hoje', hoje, 'text-primary')}
-            {grupo('Aguardando resposta', aguardando, 'text-orange-600')}
             {grupo('Atrasados', atrasados, 'text-red-600')}
             {grupo('Sem próximo contato', semContato, 'text-gray-600')}
             {agendados.length > 0 && (
