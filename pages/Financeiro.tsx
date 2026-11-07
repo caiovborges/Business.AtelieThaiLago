@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { useAuth } from '../AuthContext';
+import LancamentoModal from '../components/LancamentoModal';
+import { PERIODO_DATAS, PERIODO_TODOS, dentroDoIntervalo, excluirLancamento, intervaloDoPeriodo, mesesComLancamento, nomeDoMes } from '../lancamentos';
 
 interface Categoria {
     id: number;
@@ -27,12 +28,17 @@ type SortDir = 'asc' | 'desc';
 
 const Financeiro = () => {
     const navigate = useNavigate();
-    const { user } = useAuth();
     const [transacoes, setTransacoes] = useState<Transacao[]>([]);
     const [categorias, setCategorias] = useState<Categoria[]>([]);
     const [loading, setLoading] = useState(true);
+    const [erro, setErro] = useState('');
+    const [aviso, setAviso] = useState('');
+    const [janela, setJanela] = useState<{ lancamento: Transacao | null } | null>(null);
 
     // Filters
+    const [periodo, setPeriodo] = useState(PERIODO_TODOS);
+    const [periodoDe, setPeriodoDe] = useState('');
+    const [periodoAte, setPeriodoAte] = useState('');
     const [filterTipo, setFilterTipo] = useState<'' | 'receita' | 'despesa'>('');
     const [filterCatId, setFilterCatId] = useState('');
     const [filterSearch, setFilterSearch] = useState('');
@@ -51,6 +57,7 @@ const Financeiro = () => {
                 .order('data', { ascending: false, nullsFirst: true }),
             supabase.from('categorias').select('*').order('nome'),
         ]);
+        setErro(transRes.error ? 'Não foi possível carregar os lançamentos: ' + transRes.error.message : '');
         if (transRes.data) setTransacoes(transRes.data as any);
         if (catRes.data) setCategorias(catRes.data as any);
         setLoading(false);
@@ -58,14 +65,23 @@ const Financeiro = () => {
 
     useEffect(() => { fetchData(); }, []);
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('Excluir esta transação?')) return;
-        await supabase.from('transacoes').delete().eq('id', id);
-        await fetchData();
+    const handleDelete = async (t: Transacao) => {
+        setAviso('');
+        setErro('');
+        try {
+            if (!(await excluirLancamento(t))) return;
+            setAviso('Lançamento excluído.');
+            await fetchData();
+        } catch (falha: any) {
+            setErro(falha.message);
+        }
     };
 
     // Filter
+    const intervalo = intervaloDoPeriodo(periodo, periodoDe, periodoAte);
+    const meses = mesesComLancamento(transacoes);
     const filtered = transacoes.filter(t => {
+        if (!dentroDoIntervalo(t.data, intervalo)) return false;
         if (filterTipo && t.tipo !== filterTipo) return false;
         if (filterCatId && String(t.categoria_id) !== filterCatId) return false;
         if (filterVinculo === 'evento' && !t.evento_id) return false;
@@ -136,17 +152,41 @@ const Financeiro = () => {
         setFilterCatId('');
         setFilterSearch('');
         setFilterVinculo('');
+        setPeriodo(PERIODO_TODOS);
+        setPeriodoDe('');
+        setPeriodoAte('');
     };
-    const hasFilters = filterTipo || filterCatId || filterSearch || filterVinculo;
+    const hasFilters = filterTipo || filterCatId || filterSearch || filterVinculo || periodo !== PERIODO_TODOS;
 
     return (
-        <div className="flex-1 flex flex-col h-screen overflow-hidden bg-background-light">
-            <header className="px-8 py-8 md:py-10 flex flex-col md:flex-row md:items-center justify-between gap-6 border-b-2 border-secondary/5 bg-background-light/50 backdrop-blur-sm sticky top-0 z-20">
+        <div className="flex-1 min-h-0 flex flex-col overflow-y-auto md:h-screen md:overflow-hidden bg-background-light">
+            <header className="px-4 md:px-8 py-6 md:py-10 flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 border-b-2 border-secondary/5 bg-background-light/50">
                 <div className="flex flex-col gap-1">
                     <h2 className="text-4xl font-black text-secondary tracking-tight font-display">Financeiro</h2>
                     <p className="text-gray-500 font-medium max-w-lg">Visão completa de todas as entradas e saídas do ateliê.</p>
                 </div>
+                <button
+                    type="button"
+                    onClick={() => setJanela({ lancamento: null })}
+                    className="h-12 px-4 shrink-0 bg-primary text-white border-2 border-secondary shadow-hard flex items-center justify-center gap-2 font-display font-bold text-sm uppercase tracking-wider"
+                >
+                    <span className="material-symbols-outlined text-[20px]">add</span>
+                    Novo lançamento
+                </button>
             </header>
+
+            {aviso && (
+                <div className="mx-4 md:mx-8 mt-4 p-3 bg-accent-success/10 border-2 border-accent-success text-accent-success text-sm font-medium flex items-center gap-2">
+                    <span className="material-symbols-outlined text-lg">check_circle</span>
+                    {aviso}
+                </div>
+            )}
+            {erro && (
+                <div className="mx-4 md:mx-8 mt-4 p-3 bg-accent-error/10 border-2 border-accent-error text-accent-error text-sm font-medium flex items-center gap-2">
+                    <span className="material-symbols-outlined text-lg">error</span>
+                    {erro}
+                </div>
+            )}
 
             {/* Summary Cards */}
             <div className="px-4 md:px-8 pt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -174,7 +214,7 @@ const Financeiro = () => {
             </div>
 
             {/* Filters */}
-            <div className="px-8 pt-4 flex flex-wrap items-center gap-3">
+            <div className="px-4 md:px-8 pt-4 flex flex-wrap items-center gap-3">
                 <div className="relative grow md:grow-0">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 text-[18px]">search</span>
                     <input
@@ -184,6 +224,29 @@ const Financeiro = () => {
                         onChange={(e) => setFilterSearch(e.target.value)}
                     />
                 </div>
+
+                <select
+                    aria-label="Período"
+                    className="bg-white border-2 border-secondary px-3 py-2 font-mono text-sm focus:border-primary focus:ring-0 rounded-sm appearance-none cursor-pointer"
+                    value={periodo}
+                    onChange={(e) => setPeriodo(e.target.value)}
+                >
+                    <option value={PERIODO_TODOS}>Todo o período</option>
+                    <option value="este_mes">Este mês</option>
+                    <option value="mes_passado">Mês passado</option>
+                    <option value="este_ano">Este ano</option>
+                    <option value={PERIODO_DATAS}>Escolher datas</option>
+                    {meses.map(m => <option key={m} value={m}>{nomeDoMes(m)}</option>)}
+                </select>
+
+                {periodo === PERIODO_DATAS && (
+                    <div className="flex flex-wrap items-center gap-2 font-mono text-sm text-gray-600">
+                        <label htmlFor="periodo-de">De</label>
+                        <input id="periodo-de" type="date" className="bg-white border-2 border-secondary px-2 py-1.5 rounded-sm" value={periodoDe} onChange={(e) => setPeriodoDe(e.target.value)} />
+                        <label htmlFor="periodo-ate">até</label>
+                        <input id="periodo-ate" type="date" className="bg-white border-2 border-secondary px-2 py-1.5 rounded-sm" value={periodoAte} onChange={(e) => setPeriodoAte(e.target.value)} />
+                    </div>
+                )}
 
                 <select
                     className="bg-white border-2 border-secondary px-3 py-2 font-mono text-sm focus:border-primary focus:ring-0 rounded-sm appearance-none cursor-pointer"
@@ -228,7 +291,7 @@ const Financeiro = () => {
             </div>
 
             {/* Table */}
-            <div className="flex-1 px-4 md:px-8 pt-4 pb-8 overflow-y-auto">
+            <div className="md:flex-1 md:min-h-0 px-4 md:px-8 pt-4 pb-8 md:overflow-y-auto">
                 <div className="w-full relative shadow-sm border border-secondary/10 overflow-x-auto">
                     {loading ? (
                         <div className="flex items-center justify-center py-20">
@@ -274,7 +337,7 @@ const Financeiro = () => {
                                             Valor <SortIcon field="valor" />
                                         </span>
                                     </th>
-                                    <th className="w-12 p-3"></th>
+                                    <th className="w-20 p-3 sticky right-0 bg-background-light"><span className="sr-only">Ações</span></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -293,7 +356,7 @@ const Financeiro = () => {
                                                 {t.tipo === 'receita' ? 'Entrada' : 'Saída'}
                                             </span>
                                         </td>
-                                        <td className="p-3 font-body text-sm text-secondary max-w-[200px] truncate">{t.descricao}</td>
+                                        <td className="p-3 font-body text-sm text-secondary max-w-[200px] truncate" title={t.descricao}>{t.descricao}</td>
                                         <td className="p-3">
                                             {t.categorias ? (
                                                 <span className="font-mono text-xs text-gray-500 flex items-center gap-1">
@@ -322,13 +385,15 @@ const Financeiro = () => {
                                                 {t.tipo === 'receita' ? '+' : '-'} R$ {Number(t.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                             </span>
                                         </td>
-                                        <td className="p-3">
-                                            <button
-                                                onClick={() => handleDelete(t.id)}
-                                                className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-accent-error transition-all"
-                                            >
-                                                <span className="material-symbols-outlined text-[18px]">delete</span>
-                                            </button>
+                                        <td className="p-2 sticky right-0 bg-background-light group-hover:bg-white transition-colors">
+                                            <div className="flex items-center justify-end gap-1">
+                                                <button type="button" onClick={() => { setAviso(''); setJanela({ lancamento: t }); }} aria-label="Editar lançamento" title="Editar" className="p-1 text-gray-500 hover:text-primary transition-colors">
+   <span className="material-symbols-outlined text-[18px]">edit</span>
+</button>
+                                                <button type="button" onClick={() => handleDelete(t)} aria-label="Excluir lançamento" title="Excluir" className="p-1 text-gray-500 hover:text-accent-error transition-colors">
+   <span className="material-symbols-outlined text-[18px]">delete</span>
+</button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -337,6 +402,14 @@ const Financeiro = () => {
                     )}
                 </div>
             </div>
+
+            <LancamentoModal
+                aberto={!!janela}
+                lancamento={janela?.lancamento ?? null}
+                categorias={categorias}
+                onClose={() => setJanela(null)}
+                onSalvo={(mensagem) => { setAviso(mensagem); setErro(''); fetchData(); }}
+            />
         </div>
     );
 };

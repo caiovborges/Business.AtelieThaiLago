@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
 import { parseValor } from '../valores';
+import LancamentoModal from '../components/LancamentoModal';
+import { excluirLancamento } from '../lancamentos';
 
 interface Categoria {
    id: number;
@@ -45,6 +47,7 @@ const EventLedger = () => {
    const [transacoes, setTransacoes] = useState<Transacao[]>([]);
    const [categorias, setCategorias] = useState<Categoria[]>([]);
    const [loading, setLoading] = useState(true);
+   const [editando, setEditando] = useState<Transacao | null>(null);
 
    // Income form
    const [incDate, setIncDate] = useState('');
@@ -154,9 +157,12 @@ const EventLedger = () => {
       setAddingExp(false);
    };
 
-   const handleDeleteTransaction = async (transId: string) => {
-      await supabase.from('transacoes').delete().eq('id', transId);
-      await fetchData();
+   const handleDeleteTransaction = async (item: Transacao) => {
+      try {
+         if (await excluirLancamento(item)) await fetchData();
+      } catch (falha: any) {
+         alert(falha.message);
+      }
    };
 
    const handleAddCategoria = async () => {
@@ -399,17 +405,19 @@ const EventLedger = () => {
 
                   <div className="flex-1 overflow-y-auto p-6 pt-2 space-y-4">
                      {receitas.map(item => (
-                        <div key={item.id} className="group bg-white border-2 border-secondary p-4 shadow-sm hover:shadow-hard-dark transition-all duration-200 cursor-pointer">
+                        <div key={item.id} className="group bg-white border-2 border-secondary p-4 shadow-sm hover:shadow-hard-dark transition-all duration-200">
                            <div className="flex justify-between items-start mb-2">
                               <span className="font-mono text-xs text-gray-500 bg-gray-100 px-1 border border-gray-300">
                                  {formatDisplayDate(item.data)}
                               </span>
-                              <button
-                                 onClick={() => handleDeleteTransaction(item.id)}
-                                 className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-accent-error transition-opacity"
-                              >
-                                 <span className="material-symbols-outlined text-sm">delete</span>
-                              </button>
+                              <div className="flex items-center gap-1">
+                                 <button type="button" onClick={() => setEditando(item)} aria-label="Editar lançamento" title="Editar" className="p-1 text-gray-500 hover:text-primary transition-colors">
+   <span className="material-symbols-outlined text-[18px]">edit</span>
+</button>
+                                 <button type="button" onClick={() => handleDeleteTransaction(item)} aria-label="Excluir lançamento" title="Excluir" className="p-1 text-gray-500 hover:text-accent-error transition-colors">
+   <span className="material-symbols-outlined text-[18px]">delete</span>
+</button>
+                              </div>
                            </div>
                            <div className="flex justify-between items-end gap-4">
                               <div className="flex-1">
@@ -518,17 +526,19 @@ const EventLedger = () => {
 
                   <div className="flex-1 overflow-y-auto p-6 pt-2 space-y-4">
                      {despesas.map(item => (
-                        <div key={item.id} className="group bg-white border-2 border-secondary p-4 shadow-sm hover:shadow-hard-dark transition-all duration-200 cursor-pointer">
+                        <div key={item.id} className="group bg-white border-2 border-secondary p-4 shadow-sm hover:shadow-hard-dark transition-all duration-200">
                            <div className="flex justify-between items-start mb-2">
                               <span className="font-mono text-xs text-gray-500 bg-gray-100 px-1 border border-gray-300">
                                  {formatDisplayDate(item.data)}
                               </span>
-                              <button
-                                 onClick={() => handleDeleteTransaction(item.id)}
-                                 className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-accent-error transition-opacity"
-                              >
-                                 <span className="material-symbols-outlined text-sm">delete</span>
-                              </button>
+                              <div className="flex items-center gap-1">
+                                 <button type="button" onClick={() => setEditando(item)} aria-label="Editar lançamento" title="Editar" className="p-1 text-gray-500 hover:text-primary transition-colors">
+   <span className="material-symbols-outlined text-[18px]">edit</span>
+</button>
+                                 <button type="button" onClick={() => handleDeleteTransaction(item)} aria-label="Excluir lançamento" title="Excluir" className="p-1 text-gray-500 hover:text-accent-error transition-colors">
+   <span className="material-symbols-outlined text-[18px]">delete</span>
+</button>
+                              </div>
                            </div>
                            <div className="flex justify-between items-end gap-4">
                               <div className="flex-1">
@@ -656,6 +666,15 @@ const EventLedger = () => {
                </div>
             </footer>
          </div>
+
+         <LancamentoModal
+            aberto={!!editando}
+            lancamento={editando}
+            categorias={categorias}
+            eventoFixoId={id}
+            onClose={() => setEditando(null)}
+            onSalvo={() => fetchData()}
+         />
       </div>
    );
 };

@@ -4,6 +4,8 @@ import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
 import { parseValor } from '../valores';
+import LancamentoModal from '../components/LancamentoModal';
+import { excluirLancamento } from '../lancamentos';
 
 interface Categoria {
   id: number;
@@ -55,6 +57,7 @@ const Dashboard = () => {
   const [pendingFollowups, setPendingFollowups] = useState<FollowUp[]>([]);
   const [recentTransacoes, setRecentTransacoes] = useState<Transacao[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editando, setEditando] = useState<Transacao | null>(null);
 
   // Add transaction form
   const [addTipo, setAddTipo] = useState<'receita' | 'despesa'>('receita');
@@ -167,9 +170,12 @@ const Dashboard = () => {
     setAdding(false);
   };
 
-  const handleDeleteTransaction = async (id: string) => {
-    await supabase.from('transacoes').delete().eq('id', id);
-    await fetchData();
+  const handleDeleteTransaction = async (t: Transacao) => {
+    try {
+      if (await excluirLancamento(t)) await fetchData();
+    } catch (falha: any) {
+      alert(falha.message);
+    }
   };
 
   const handleAddCategoria = async () => {
@@ -577,13 +583,16 @@ const Dashboard = () => {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1 md:gap-3 shrink-0">
                       <span className={`font-mono font-bold ${t.tipo === 'receita' ? 'text-accent-success' : 'text-accent-error'}`}>
                         {t.tipo === 'receita' ? '+' : '-'} R$ {Number(t.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </span>
-                      <button onClick={() => handleDeleteTransaction(t.id)} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-accent-error transition-all">
-                        <span className="material-symbols-outlined text-[18px]">delete</span>
-                      </button>
+                      <button type="button" onClick={() => setEditando(t)} aria-label="Editar lançamento" title="Editar" className="p-1 text-gray-500 hover:text-primary transition-colors">
+   <span className="material-symbols-outlined text-[18px]">edit</span>
+</button>
+                      <button type="button" onClick={() => handleDeleteTransaction(t)} aria-label="Excluir lançamento" title="Excluir" className="p-1 text-gray-500 hover:text-accent-error transition-colors">
+   <span className="material-symbols-outlined text-[18px]">delete</span>
+</button>
                     </div>
                   </div>
                 ))}
@@ -592,6 +601,14 @@ const Dashboard = () => {
           </div>
         </>
       )}
+
+      <LancamentoModal
+        aberto={!!editando}
+        lancamento={editando}
+        categorias={categorias}
+        onClose={() => setEditando(null)}
+        onSalvo={() => fetchData()}
+      />
     </div>
   );
 };
