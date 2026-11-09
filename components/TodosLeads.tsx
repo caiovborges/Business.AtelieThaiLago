@@ -42,6 +42,8 @@ const TodosLeads = ({ leads, busca, loading, erro, onAbrir, onEditar }: Props) =
     const [status, setStatus] = useState('');
     const [origem, setOrigem] = useState('');
     const [quando, setQuando] = useState<'' | 'futuro' | 'passado' | 'sem'>('');
+    const [servico, setServico] = useState('');
+    const [semPerdidos, setSemPerdidos] = useState(true);
     const [coluna, setColuna] = useState<Coluna>('created_at');
     const [asc, setAsc] = useState(false);
 
@@ -50,11 +52,19 @@ const TodosLeads = ({ leads, busca, loading, erro, onAbrir, onEditar }: Props) =
         [leads],
     );
 
+    const servicos = useMemo(
+        () => [...new Set(leads.flatMap(l => (l.services || []).map(s => s.trim())).filter(Boolean))].sort(),
+        [leads],
+    );
+
     const hoje = new Date().toLocaleDateString('sv-SE'); // AAAA-MM-DD no fuso local
 
     const lista = leads
         .filter(l => buscaLead(l, busca))
-        .filter(l => !status || l.status === status)
+        .filter(l => status ? l.status === status : !(semPerdidos && l.status === 'Perdido'))
+        .filter(l => !servico || (servico === '__vazio'
+            ? !(l.services || []).length
+            : (l.services || []).some(s => s.trim() === servico)))
         .filter(l => !origem || (origem === '__vazio' ? !(l.source || '').trim() : (l.source || '').trim() === origem))
         .filter(l => {
             if (!quando) return true;
@@ -96,6 +106,11 @@ const TodosLeads = ({ leads, busca, loading, erro, onAbrir, onEditar }: Props) =
                     <option value="">Todas as etapas</option>
                     {PIPELINE_STAGES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
+                <select aria-label="Filtrar por serviço" className={seletor} value={servico} onChange={e => setServico(e.target.value)}>
+                    <option value="">Todos os serviços</option>
+                    {servicos.map(s => <option key={s} value={s}>{s}</option>)}
+                    <option value="__vazio">Sem serviço informado</option>
+                </select>
                 <select aria-label="Filtrar por origem" className={seletor} value={origem} onChange={e => setOrigem(e.target.value)}>
                     <option value="">Todas as origens</option>
                     {origens.map(o => <option key={o} value={o}>{o}</option>)}
@@ -107,6 +122,17 @@ const TodosLeads = ({ leads, busca, loading, erro, onAbrir, onEditar }: Props) =
                     <option value="passado">Casamento já passou</option>
                     <option value="sem">Sem data</option>
                 </select>
+                <label className={`flex items-center gap-1.5 text-xs font-mono select-none ${status ? 'text-gray-300' : 'text-gray-600 cursor-pointer'}`}
+                    title={status ? 'Desligado enquanto uma etapa está escolhida' : undefined}>
+                    <input
+                        type="checkbox"
+                        className="accent-primary"
+                        checked={semPerdidos}
+                        disabled={!!status}
+                        onChange={e => setSemPerdidos(e.target.checked)}
+                    />
+                    Esconder perdidos
+                </label>
                 <span className="ml-auto text-xs font-mono text-gray-500">
                     {lista.length} de {leads.length} leads
                 </span>
