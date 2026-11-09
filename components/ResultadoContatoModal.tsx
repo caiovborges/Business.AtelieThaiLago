@@ -5,6 +5,7 @@ import {
     ItemContato, LIMITE_TENTATIVAS, LeadContato, MENSAGENS, MOTIVOS_PERDA, ROTULO_RESULTADO,
     dataProximoContato, diasAteProximo, esperaResposta, linkWhatsApp, montarMensagem, notaTentativa,
 } from '../leadContato';
+import { ETAPA, avancar } from '../etapas';
 
 export interface AlvoResultado<L extends LeadContato = LeadContato> {
     item: ItemContato<L>;
@@ -31,6 +32,7 @@ function ResultadoContatoModal<L extends LeadContato>({ alvo, onClose, onSalvo, 
     const [hora, setHora] = useState('09:00');
     const [motivo, setMotivo] = useState(MOTIVOS_PERDA[0]);
     const [nota, setNota] = useState('');
+    const [sinalPago, setSinalPago] = useState(false);
     const [salvando, setSalvando] = useState(false);
     const [erro, setErro] = useState('');
 
@@ -43,6 +45,7 @@ function ResultadoContatoModal<L extends LeadContato>({ alvo, onClose, onSalvo, 
         setHora('09:00');
         setMotivo(MOTIVOS_PERDA[0]);
         setNota('');
+        setSinalPago(false);
         setErro('');
     }, [leadId, alvo?.inicial]);
 
@@ -53,7 +56,8 @@ function ResultadoContatoModal<L extends LeadContato>({ alvo, onClose, onSalvo, 
     // "Sem resposta" so e opcao aqui ao confirmar reuniao; nos demais contatos vem depois da espera.
     const opcoes = esperaResposta(item) ? OPCOES.filter(o => o !== 'sem_resposta') : OPCOES;
     const pedeData = resultado === 'reuniao' || resultado === 'retornar';
-    const dias = resultado ? diasAteProximo(resultado, tentativas, temOrcamento) : null;
+    const fecharAgora = resultado === 'quer_fechar' && sinalPago;
+    const dias = resultado && !fecharAgora ? diasAteProximo(resultado, tentativas, temOrcamento) : null;
     const dataAutomatica = dias !== null ? dataProximoContato(dias) : null;
     const linkCaro = resultado === 'caro' ? linkWhatsApp(lead.phone, montarMensagem('caro', lead)) : null;
 
@@ -61,7 +65,17 @@ function ResultadoContatoModal<L extends LeadContato>({ alvo, onClose, onSalvo, 
         if (resultado === 'sem_resposta') return notaTentativa(tentativas);
         if (resultado === 'reuniao') return 'Reunião';
         if (resultado === 'retornar') return 'Retorno combinado';
+        if (resultado === 'quer_fechar') return 'Cobrar contrato e sinal';
         return ROTULO_RESULTADO[resultado];
+    };
+
+    // Para onde o lead vai com este resultado. So avanca no funil, nunca volta.
+    const proximaEtapa = (): string | null => {
+        if (resultado === 'desistiu') return ETAPA.perdido;
+        if (resultado === 'quer_fechar') return avancar(lead.status, ETAPA.sinal);
+        if (resultado === 'caro' || resultado === 'reuniao') return avancar(lead.status, ETAPA.negociando);
+        if (resultado === 'avaliando' || resultado === 'retornar') return avancar(lead.status, ETAPA.conversa);
+        return null;
     };
 
     const salvar = async (e: React.FormEvent) => {
@@ -78,7 +92,7 @@ function ResultadoContatoModal<L extends LeadContato>({ alvo, onClose, onSalvo, 
 
         setSalvando(true);
         try {
-            if (resultado === 'quer_fechar') {
+            if (fecharAgora) {
                 if (followup) {
                     const { error } = await supabase.from('lead_followups').update({ resultado }).eq('id', followup.id);
                     if (error) throw new Error('Não foi possível registrar o contato: ' + error.message);
@@ -89,7 +103,7 @@ function ResultadoContatoModal<L extends LeadContato>({ alvo, onClose, onSalvo, 
             }
 
             const perdido = resultado === 'desistiu';
-            const negociando = (resultado === 'caro' || resultado === 'reuniao') && lead.status !== 'Em Negociação';
+            const etapa = proximaEtapa();
             let proximo: Date | null = null;
             if (pedeData) {
                 proximo = new Date(`${data}T${resultado === 'reuniao' ? hora : '09:00'}`);
@@ -103,13 +117,13 @@ function ResultadoContatoModal<L extends LeadContato>({ alvo, onClose, onSalvo, 
                 resultado,
                 proximo: perdido ? null : proximo,
                 nota: perdido ? null : (nota.trim() || notaPadrao()),
-                status: perdido ? 'Perdido' : negociando ? 'Em Negociação' : null,
+                status: etapa,
                 motivo: perdido ? motivo : null,
             });
 
             onSalvo(perdido
                 ? `${lead.name} marcado como Perdido.`
-                : `${lead.name}: próximo contato em ${proximo?.toLocaleDateString('pt-BR')}.`);
+                : `${lead.name}${etapa ? ` foi para ${etapa}` : ''}: próximo contato em ${proximo?.toLocaleDateString('pt-BR')}.`);
             onClose();
         } catch (falha: any) {
             setErro(falha.message);
@@ -151,6 +165,20 @@ function ResultadoContatoModal<L extends LeadContato>({ alvo, onClose, onSalvo, 
                         <p className="text-sm font-medium text-gray-600">Tentativa {tentativas + 1} de {LIMITE_TENTATIVAS} sem resposta.</p>
                     )}
 
+                    {resultado === 'quer_fechar' && (
+                        <fieldset className="flex flex-col gap-2 p-3 bg-amber-50 border-2 border-amber-200">
+                            <legend className="sr-only">O sinal já foi pago?</legend>
+                            <label className="flex items-center gap-2 text-sm text-secondary cursor-pointer">
+                                <input type="radio" name="sinal" checked={!sinalPago} onChange={() => setSinalPago(false)} />
+                                Ainda falta o contrato ou o sinal: vai para {ETAPA.sinal}
+                            </label>
+                            <label className="flex items-center gap-2 text-sm text-secondary cursor-pointer">
+                                <input type="radio" name="sinal" checked={sinalPago} onChange={() => setSinalPago(true)} />
+                                O sinal já foi pago: fechar agora
+                            </label>
+                        </fieldset>
+                    )}
+
                     {dataAutomatica && (
                         <p className="text-sm font-mono text-gray-600">Próximo contato em {dataAutomatica.toLocaleDateString('pt-BR')}.</p>
                     )}
@@ -189,7 +217,7 @@ function ResultadoContatoModal<L extends LeadContato>({ alvo, onClose, onSalvo, 
                         </div>
                     )}
 
-                    {resultado && resultado !== 'quer_fechar' && resultado !== 'desistiu' && (
+                    {resultado && !fecharAgora && resultado !== 'desistiu' && (
                         <div>
                             <label htmlFor="resultado-nota" className={estiloRotulo}>Anotação para o próximo contato</label>
                             <input id="resultado-nota" className={estiloInput} value={nota} onChange={e => setNota(e.target.value)} placeholder="Opcional" />
@@ -199,7 +227,7 @@ function ResultadoContatoModal<L extends LeadContato>({ alvo, onClose, onSalvo, 
                     <button type="submit" disabled={salvando}
                         className="h-12 bg-primary text-white font-display font-bold uppercase tracking-wider border-2 border-secondary shadow-hard flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                         <span className={`material-symbols-outlined text-[20px] ${salvando ? 'animate-spin' : ''}`}>{salvando ? 'progress_activity' : 'check'}</span>
-                        {resultado === 'quer_fechar' ? 'Continuar para fechar' : 'Registrar'}
+                        {fecharAgora ? 'Continuar para fechar' : 'Registrar'}
                     </button>
                 </form>
             </div>

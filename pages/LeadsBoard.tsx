@@ -10,17 +10,10 @@ import FecharLeadModal from '../components/FecharLeadModal';
 import ResultadoContatoModal, { AlvoResultado } from '../components/ResultadoContatoModal';
 import { linkConversa, linkWhatsApp, montarMensagem, organizarContatos, resumoContato, temOrcamentoLead } from '../leadContato';
 import { mensagemEnviada, naoRespondeu } from '../leadAcoes';
+import { COR_ETAPA, DESCRICAO_ETAPA, ETAPA, ETAPAS_ATIVAS, ETAPAS_ENCERRADAS } from '../etapas';
 
-// Status colors mapping
-const STATUS_COLORS: Record<string, string> = {
-    'Novo Lead': 'border-blue-400 bg-blue-50',
-    'Proposta Enviada': 'border-purple-400 bg-purple-50',
-    'Em Negociação': 'border-pink-400 bg-pink-50',
-    'Fechado': 'border-green-400 bg-green-50',
-    'Perdido': 'border-gray-400 bg-gray-50',
-};
-
-const ACTIVE_STAGES = ['Novo Lead', 'Proposta Enviada', 'Em Negociação'];
+const STATUS_COLORS = COR_ETAPA;
+const ACTIVE_STAGES = ETAPAS_ATIVAS;
 
 const LeadsBoard = () => {
     const { user } = useAuth();
@@ -184,9 +177,9 @@ const LeadsBoard = () => {
             if (viewMode === 'funnel') {
                 return ACTIVE_STAGES.includes(l.status);
             } else if (viewMode === 'lost') {
-                return l.status === 'Perdido';
+                return ETAPAS_ENCERRADAS.includes(l.status);
             } else { // closed
-                return l.status === 'Fechado';
+                return l.status === ETAPA.fechado;
             }
         })
         .sort((a, b) => {
@@ -231,7 +224,7 @@ const LeadsBoard = () => {
         });
 
     // Group by status (Dynamic based on viewMode)
-    const stagesToShow = viewMode === 'funnel' ? ACTIVE_STAGES : (viewMode === 'lost' ? ['Perdido'] : ['Fechado']);
+    const stagesToShow = viewMode === 'funnel' ? ACTIVE_STAGES : (viewMode === 'lost' ? ETAPAS_ENCERRADAS : [ETAPA.fechado]);
 
     // Quick helper to group
     const leadsByStatus = stagesToShow.reduce((acc, stage) => {
@@ -288,7 +281,7 @@ const LeadsBoard = () => {
                             className={`shrink-0 px-4 py-2 rounded-sm font-bold text-sm uppercase transition-all flex items-center gap-2 ${viewMode === 'lost' ? 'bg-gray-600 text-white shadow-md' : 'bg-white text-gray-500 hover:bg-gray-100'}`}
                         >
                             <span className="material-symbols-outlined text-[18px]">list</span>
-                            Perdidos
+                            Perdidos / Sem resposta
                         </button>
                         <button
                             onClick={() => setViewMode('closed')}
@@ -393,7 +386,7 @@ const LeadsBoard = () => {
                                     {filteredLeads.length === 0 && (
                                         <tr>
                                             <td colSpan={4} className="p-12 text-center text-gray-400 font-mono italic">
-                                                {viewMode === 'lost' ? 'Nenhum lead marcado como perdido.' : 'Nenhum lead fechado encontrado.'}
+                                                {viewMode === 'lost' ? 'Nenhum lead perdido ou sem resposta.' : 'Nenhum lead fechado encontrado.'}
                                             </td>
                                         </tr>
                                     )}
@@ -457,7 +450,7 @@ const LeadsBoard = () => {
                             >
                                 {/* Column Header */}
                                 <div className={`p-4 border-b-2 border-secondary/10 font-display font-bold uppercase tracking-wider flex justify-between items-center ${STATUS_COLORS[stage] || 'bg-gray-100'}`}>
-                                    <span>{stage}</span>
+                                    <span title={DESCRICAO_ETAPA[stage]}>{stage}</span>
                                     <span className="bg-white/50 px-2 py-0.5 rounded text-xs border border-secondary/20 shadow-sm font-mono text-gray-600">
                                         {leadsByStatus[stage]?.length || 0}
                                     </span>

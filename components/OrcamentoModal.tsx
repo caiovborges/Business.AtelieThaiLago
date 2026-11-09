@@ -4,6 +4,7 @@ import { useAuth } from '../AuthContext';
 import { formatarReais, parseValor } from '../valores';
 import { DIAS_APOS_ORCAMENTO, dataProximoContato } from '../leadContato';
 import { registrarContato } from '../leadAcoes';
+import { ETAPA, avancar } from '../etapas';
 
 interface LeadOrcamento {
     id: string;
@@ -298,7 +299,7 @@ const OrcamentoModal = ({ lead, editarId = null, onClose, onSalvo }: OrcamentoMo
                 resultado: 'orcamento_enviado',
                 proximo,
                 nota: 'Depois do orçamento',
-                status: lead.status === 'Novo Lead' ? 'Proposta Enviada' : null,
+                status: avancar(lead.status, ETAPA.orcamento),
             });
         } catch (falha: any) {
             mensagem = `Orçamento salvo, mas o próximo contato não foi agendado. ${falha.message}`;

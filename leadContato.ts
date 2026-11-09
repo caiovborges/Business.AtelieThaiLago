@@ -24,7 +24,7 @@ export interface LeadContato {
 
 export type ChaveMensagem =
     | 'primeiro' | 'continuidade' | 'retomar' | 'encerramento'
-    | 'posOrcamento' | 'caro' | 'lembrete' | 'reuniao' | 'confirmarReuniao';
+    | 'posOrcamento' | 'caro' | 'lembrete' | 'reuniao' | 'confirmarReuniao' | 'sinal';
 
 export interface ItemContato<L extends LeadContato = LeadContato> {
     lead: L;
@@ -37,7 +37,8 @@ export interface ItemContato<L extends LeadContato = LeadContato> {
     aguardando: boolean;
 }
 
-export const ETAPAS_ATIVAS = ['Novo Lead', 'Proposta Enviada', 'Em Negociação'];
+import { ETAPA, ETAPAS_ATIVAS, ETAPAS_COM_ORCAMENTO } from './etapas';
+export { ETAPAS_ATIVAS };
 
 // Depois de 3 tentativas seguidas sem resposta, o 4o contato e o de encerramento.
 export const LIMITE_TENTATIVAS = 3;
@@ -100,6 +101,10 @@ export const MENSAGENS: Record<ChaveMensagem, { titulo: string; texto: string }>
         titulo: 'Confirmar reunião',
         texto: 'Olá {nome}! Tudo bem? Tudo certinho com a nossa reunião?',
     },
+    sinal: {
+        titulo: 'Contrato e sinal',
+        texto: 'Olá {nome}! Tudo bem? Passando para alinharmos o contrato e o sinal da reserva. Assim que estiver tudo certinho, a data de vocês fica garantida na minha agenda! 💖',
+    },
 };
 
 export function nomeSaudacao(nome: string): string {
@@ -150,7 +155,7 @@ export function linkConversa(telefone: string | null | undefined): string | null
 }
 
 export function temOrcamentoLead(status: string, temProposta: boolean): boolean {
-    return temProposta || status === 'Proposta Enviada' || status === 'Em Negociação';
+    return temProposta || ETAPAS_COM_ORCAMENTO.includes(status);
 }
 
 // Vale a data em que o contato foi feito: ele pode ser marcado antes ou depois do agendado.
@@ -176,9 +181,11 @@ export function mensagemSugerida(
     tentativas: number,
     temOrcamento: boolean,
     ultimoResultado: string | null,
+    status = '',
 ): ChaveMensagem {
     if (ultimoResultado === 'reuniao') return 'confirmarReuniao';
     if (tentativas >= LIMITE_TENTATIVAS) return 'encerramento';
+    if (status === ETAPA.sinal) return 'sinal';
     if (temOrcamento) {
         if (tentativas === 2) return 'reuniao';
         if (tentativas === 1) return 'lembrete';
@@ -204,7 +211,7 @@ export function resumoContato<L extends LeadContato>(lead: L, temOrcamento: bool
         tentativas,
         ultimoResultado,
         temOrcamento,
-        mensagem: mensagemSugerida(feitos.length, tentativas, temOrcamento, ultimoResultado),
+        mensagem: mensagemSugerida(feitos.length, tentativas, temOrcamento, ultimoResultado, lead.status),
         aguardando: !!proximo?.enviada_em,
     };
 }
@@ -235,12 +242,15 @@ export function contatoEncerra(tentativas: number): boolean {
 const PRAZOS_SEM_ORCAMENTO = [2, 25, 30];
 const PRAZOS_COM_ORCAMENTO = [7, 14, 30];
 export const DIAS_APOS_ORCAMENTO = 7;
+// Quer fechar mas ainda nao pagou: cobra contrato e sinal depois destes dias.
+export const DIAS_COBRAR_SINAL = 3;
 
 // Dias ate o proximo contato; vazio quando a Thai escolhe a data ou o lead encerra.
 export function diasAteProximo(resultado: string, tentativas: number, temOrcamento: boolean): number | null {
     if (resultado === 'avaliando') return 7;
     if (resultado === 'caro') return 2;
     if (resultado === 'orcamento_enviado') return DIAS_APOS_ORCAMENTO;
+    if (resultado === 'quer_fechar') return DIAS_COBRAR_SINAL;
     if (resultado !== 'sem_resposta' || contatoEncerra(tentativas)) return null;
     return (temOrcamento ? PRAZOS_COM_ORCAMENTO : PRAZOS_SEM_ORCAMENTO)[tentativas];
 }

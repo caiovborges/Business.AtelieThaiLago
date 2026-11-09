@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient';
 import {
     ItemContato, MOTIVO_SEM_RESPOSTA, contatoEncerra, dataProximoContato, diasAteProximo, fimDaEspera, notaTentativa,
 } from './leadContato';
+import { ETAPA } from './etapas';
 
 interface RegistroContato {
     leadId: string;
@@ -35,16 +36,16 @@ export async function mensagemEnviada(item: ItemContato, usuarioId: string): Pro
     const { lead, followup, tentativas } = item;
 
     if (contatoEncerra(tentativas)) {
-        if (!window.confirm(`Esta é a mensagem de encerramento. ${lead.name} vai para Perdido. Continuar?`)) return '';
+        if (!window.confirm(`Esta é a mensagem de encerramento. ${lead.name} vai para ${ETAPA.semResposta}. Continuar?`)) return '';
         await registrarContato({
             leadId: lead.id,
             followupId: followup?.id ?? null,
             resultado: 'sem_resposta',
             proximo: null,
-            status: 'Perdido',
+            status: ETAPA.semResposta,
             motivo: MOTIVO_SEM_RESPOSTA,
         });
-        return `${lead.name} marcado como Perdido.`;
+        return `${lead.name} foi para ${ETAPA.semResposta}.`;
     }
 
     const limite = fimDaEspera();
@@ -53,6 +54,12 @@ export async function mensagemEnviada(item: ItemContato, usuarioId: string): Pro
         ? await supabase.from('lead_followups').update(envio).eq('id', followup.id)
         : await supabase.from('lead_followups').insert({ ...envio, user_id: usuarioId, lead_id: lead.id, type: 'WhatsApp', done: false });
     if (error) throw new Error('Não foi possível registrar o envio. Nada foi alterado: ' + error.message);
+
+    // Primeira mensagem: o lead sai de Novo Lead.
+    if (lead.status === ETAPA.novo) {
+        const { error: erroEtapa } = await supabase.from('leads').update({ status: ETAPA.conversa }).eq('id', lead.id).eq('status', ETAPA.novo);
+        if (erroEtapa) throw new Error(`Mensagem registrada, mas a etapa não mudou para ${ETAPA.conversa}: ` + erroEtapa.message);
+    }
     return `Mensagem registrada. Sem resposta até ${limite.toLocaleDateString('pt-BR')}, ${lead.name} é classificado sozinho e o próximo follow-up fica agendado.`;
 }
 

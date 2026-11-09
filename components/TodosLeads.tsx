@@ -1,13 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { EditingLead, PIPELINE_STAGES } from './AddLeadModal';
+import { EditingLead } from './AddLeadModal';
+import { COR_ETAPA, PIPELINE_STAGES, encerrado } from '../etapas';
 
-const STATUS_BADGE: Record<string, string> = {
-    'Novo Lead': 'bg-blue-50 text-blue-700 border-blue-300',
-    'Proposta Enviada': 'bg-purple-50 text-purple-700 border-purple-300',
-    'Em Negociação': 'bg-pink-50 text-pink-700 border-pink-300',
-    'Fechado': 'bg-green-50 text-green-700 border-green-300',
-    'Perdido': 'bg-gray-100 text-gray-600 border-gray-300',
-};
+const STATUS_BADGE = COR_ETAPA;
 
 type Coluna = 'name' | 'status' | 'event_date' | 'source' | 'created_at';
 
@@ -61,7 +56,7 @@ const TodosLeads = ({ leads, busca, loading, erro, onAbrir, onEditar }: Props) =
 
     const lista = leads
         .filter(l => buscaLead(l, busca))
-        .filter(l => status ? l.status === status : !(semPerdidos && l.status === 'Perdido'))
+        .filter(l => status ? l.status === status : !(semPerdidos && encerrado(l.status)))
         .filter(l => !servico || (servico === '__vazio'
             ? !(l.services || []).length
             : (l.services || []).some(s => s.trim() === servico)))
@@ -131,7 +126,7 @@ const TodosLeads = ({ leads, busca, loading, erro, onAbrir, onEditar }: Props) =
                         disabled={!!status}
                         onChange={e => setSemPerdidos(e.target.checked)}
                     />
-                    Esconder perdidos
+                    Esconder perdidos e sem resposta
                 </label>
                 <span className="ml-auto text-xs font-mono text-gray-500">
                     {lista.length} de {leads.length} leads

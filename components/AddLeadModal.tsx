@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import LeadFollowups from './LeadFollowups';
 import { FollowupResumo } from '../leadContato';
+import { ETAPA, PIPELINE_STAGES } from '../etapas';
 
 interface Estado {
     id: number;
@@ -48,13 +49,7 @@ interface LeadModalProps {
     ocultarFollowups?: boolean;
 }
 
-export const PIPELINE_STAGES = [
-    'Novo Lead',
-    'Proposta Enviada',
-    'Em Negociação',
-    'Fechado',
-    'Perdido'
-];
+export { PIPELINE_STAGES };
 
 export const LEAD_SOURCES = [
     'Meta Ads',
@@ -309,7 +304,7 @@ const AddLeadModal = ({ isOpen, onClose, onSave, editingLead, ocultarFollowups =
                                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Etapa do Funil</label>
                                 <select className="w-full bg-white border-2 border-secondary p-3 font-mono text-sm focus:border-primary outline-none appearance-none font-bold"
                                     value={status} onChange={e => setStatus(e.target.value)}>
-                                    {PIPELINE_STAGES.filter(s => s !== 'Fechado' || status === 'Fechado').map(s => <option key={s} value={s}>{s}</option>)}
+                                    {PIPELINE_STAGES.filter(s => s !== ETAPA.fechado || status === ETAPA.fechado).map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
                             </div>
                             <div>

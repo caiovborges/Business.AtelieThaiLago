@@ -11,6 +11,7 @@ import { mensagemEnviada, naoRespondeu } from '../leadAcoes';
 import FecharLeadModal from '../components/FecharLeadModal';
 import { abrirContrato, enviarContrato, removerContrato } from '../contratos';
 import { formatarReais } from '../valores';
+import { DESCRICAO_ETAPA, ETAPA, ETAPAS_FUNIL, encerrado } from '../etapas';
 
 interface LeadCompleto extends EditingLead {
     cidades?: { nome: string; estado_id: number; estados?: { sigla: string } | null } | null;
@@ -24,7 +25,7 @@ interface EventoFechado {
     valor_previsto: number | null;
 }
 
-const ETAPAS = ['Novo Lead', 'Proposta Enviada', 'Em Negociação', 'Fechado'];
+const ETAPAS = ETAPAS_FUNIL;
 
 const dataCurta = (valor: string) => new Date(valor).toLocaleDateString('pt-BR');
 const dataEvento = (valor: string | null) => (valor ? new Date(valor + 'T12:00:00').toLocaleDateString('pt-BR') : 'A definir');
@@ -146,7 +147,7 @@ const LeadProfile = () => {
     const feitos = feitosEmOrdem(followups);
     const ultimoContato = feitos[feitos.length - 1] ?? null;
     const atrasado = !!proximo && new Date(proximo.scheduled_at).getTime() < new Date().setHours(0, 0, 0, 0);
-    const perdido = lead.status === 'Perdido';
+    const perdido = encerrado(lead.status);
     const indiceEtapa = ETAPAS.indexOf(lead.status);
     const comValores = orcamentos.filter(o => itensComValor(o).length > 0);
     // Vale o mais recente de cada servico: um casal pode receber orcamentos em paralelo
@@ -161,7 +162,7 @@ const LeadProfile = () => {
     const resumo = resumoContato({ ...lead, lead_followups: followups }, temOrcamentoLead(lead.status, comValores.length > 0));
     const chaveMensagem = mensagemEscolhida || resumo.mensagem;
     const whatsapp = resumo.aguardando ? linkConversa(lead.phone) : linkWhatsApp(lead.phone, montarMensagem(chaveMensagem, lead));
-    const emAtendimento = !perdido && lead.status !== 'Fechado';
+    const emAtendimento = !perdido && lead.status !== ETAPA.fechado;
     const cidade = lead.cidades ? `${lead.cidades.nome}${lead.cidades.estados ? ` - ${lead.cidades.estados.sigla}` : ''}` : '';
 
     const executar = async (acao: () => Promise<string>) => {
@@ -332,19 +333,19 @@ const LeadProfile = () => {
                                 disabled={ocupado || !!evento}
                                 onChange={e => alterarEtapa(e.target.value)}
                             >
-                                {PIPELINE_STAGES.filter(s => s !== 'Fechado' || lead.status === 'Fechado').map(s => <option key={s} value={s}>{s}</option>)}
+                                {PIPELINE_STAGES.filter(s => s !== ETAPA.fechado || lead.status === ETAPA.fechado).map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                         </label>
                     }
                 >
                     {perdido ? (
-                        <p className="p-3 bg-gray-100 border-2 border-gray-300 text-sm font-bold text-gray-600">Lead marcado como Perdido.</p>
+                        <p className="p-3 bg-gray-100 border-2 border-gray-300 text-sm font-bold text-gray-600">Lead marcado como {lead.status}. {DESCRICAO_ETAPA[lead.status]}</p>
                     ) : (
-                        <ol className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        <ol className="grid grid-cols-2 md:grid-cols-6 gap-2">
                             {ETAPAS.map((etapa, i) => {
                                 const estado = i < indiceEtapa ? 'bg-primary/10 text-primary border-primary/30' : i === indiceEtapa ? 'bg-primary text-white border-secondary' : 'bg-white text-gray-400 border-gray-200';
                                 return (
-                                    <li key={etapa} aria-current={i === indiceEtapa ? 'step' : undefined} className={`p-2 border-2 text-xs font-bold uppercase text-center ${estado}`}>{etapa}</li>
+                                    <li key={etapa} title={DESCRICAO_ETAPA[etapa]} aria-current={i === indiceEtapa ? 'step' : undefined} className={`p-2 border-2 text-xs font-bold uppercase text-center ${estado}`}>{etapa}</li>
                                 );
                             })}
                         </ol>
@@ -363,7 +364,7 @@ const LeadProfile = () => {
                         <Dado rotulo="Último contato">{ultimoContato ? dataCurta(dataDoContato(ultimoContato)) : 'Nenhum'}</Dado>
                         <Dado rotulo="Último resultado">{resumo.ultimoResultado ? ROTULO_RESULTADO[resumo.ultimoResultado] : 'Não registrado'}</Dado>
                         <Dado rotulo="Tentativas sem resposta">{`${resumo.tentativas} de ${LIMITE_TENTATIVAS}`}</Dado>
-                        {perdido && <Dado rotulo="Motivo da perda">{lead.motivo_perda}</Dado>}
+                        {perdido && lead.motivo_perda && <Dado rotulo="Motivo">{lead.motivo_perda}</Dado>}
                     </dl>
 
                     {!perdido && !evento && !resumo.aguardando && (

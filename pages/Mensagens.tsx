@@ -11,6 +11,7 @@ const ORDEM: { chave: ChaveMensagem; quando: string }[] = [
     { chave: 'lembrete', quando: 'Com orçamento, depois de 1 tentativa sem resposta. As fotos são anexadas na hora.' },
     { chave: 'reuniao', quando: 'Com orçamento, depois de 2 tentativas sem resposta.' },
     { chave: 'confirmarReuniao', quando: 'Antes de uma reunião combinada.' },
+    { chave: 'sinal', quando: 'Quando o casal quer fechar e falta o contrato ou o sinal (etapa Aguardando Sinal).' },
     { chave: 'encerramento', quando: 'Depois de 3 tentativas sem resposta. É o último contato.' },
 ];
 

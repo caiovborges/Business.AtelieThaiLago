@@ -16,7 +16,8 @@ const banco = createClient(Deno.env.get('SUPABASE_URL') ?? '', chaveServidor(), 
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-const ETAPAS_ATIVAS = ['Novo Lead', 'Proposta Enviada', 'Em Negociação'];
+// Mesmas etapas ativas de etapas.ts, no app.
+const ETAPAS_ATIVAS = ['Novo Lead', 'Em Conversa', 'Orçamento Enviado', 'Negociando', 'Aguardando Sinal'];
 
 const fonte: FonteAgenda = {
   async contaDoToken(token) {
