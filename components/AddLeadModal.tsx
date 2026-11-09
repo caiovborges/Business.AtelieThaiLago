@@ -318,6 +318,7 @@ const AddLeadModal = ({ isOpen, onClose, onSave, editingLead, ocultarFollowups =
                                     value={source} onChange={e => setSource(e.target.value)}>
                                     <option value="">Selecione</option>
                                     {LEAD_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+                                    {source && !LEAD_SOURCES.includes(source) && <option value={source}>{source}</option>}
                                 </select>
                             </div>
                             <div>

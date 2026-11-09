@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
 import AddLeadModal, { LeadFormData, EditingLead, PIPELINE_STAGES } from '../components/AddLeadModal';
 import FalarHoje from '../components/FalarHoje';
+import TodosLeads from '../components/TodosLeads';
 import OrcamentoModal from '../components/OrcamentoModal';
 import FecharLeadModal from '../components/FecharLeadModal';
 import ResultadoContatoModal, { AlvoResultado } from '../components/ResultadoContatoModal';
@@ -29,7 +30,7 @@ const LeadsBoard = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [sortOption, setSortOption] = useState<string>('prioridade');
-    const [viewMode, setViewMode] = useState<'hoje' | 'aguardando' | 'funnel' | 'lost' | 'closed'>('hoje');
+    const [viewMode, setViewMode] = useState<'hoje' | 'aguardando' | 'funnel' | 'lost' | 'closed' | 'todos'>('hoje');
     const [erroLeads, setErroLeads] = useState('');
     const [alvoResultado, setAlvoResultado] = useState<AlvoResultado<EditingLead> | null>(null);
     const [aviso, setAviso] = useState('');
@@ -296,6 +297,13 @@ const LeadsBoard = () => {
                             <span className="material-symbols-outlined text-[18px]">check_circle</span>
                             Fechados
                         </button>
+                        <button
+                            onClick={() => setViewMode('todos')}
+                            className={`shrink-0 px-4 py-2 rounded-sm font-bold text-sm uppercase transition-all flex items-center gap-2 ${viewMode === 'todos' ? 'bg-secondary text-white shadow-md' : 'bg-white text-secondary hover:bg-secondary/10'}`}
+                        >
+                            <span className="material-symbols-outlined text-[18px]">table_rows</span>
+                            Todos ({leads.length})
+                        </button>
                     </div>
 
                     {/* Controls */}
@@ -341,7 +349,16 @@ const LeadsBoard = () => {
                         {aviso}
                     </div>
                 )}
-                {(viewMode === 'hoje' || viewMode === 'aguardando') ? (
+                {viewMode === 'todos' ? (
+                    <TodosLeads
+                        leads={leads}
+                        busca={searchTerm}
+                        loading={loading}
+                        erro={erroLeads}
+                        onAbrir={(lead) => navigate(`/leads/${lead.id}`)}
+                        onEditar={(lead) => { setEditingLead(lead); setModalOpen(true); }}
+                    />
+                ) : (viewMode === 'hoje' || viewMode === 'aguardando') ? (
                     <FalarHoje<EditingLead>
                         visao={viewMode}
                         leads={leads.filter(l =>
