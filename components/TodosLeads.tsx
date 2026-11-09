@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { EditingLead } from './AddLeadModal';
 import { COR_ETAPA, PIPELINE_STAGES, encerrado } from '../etapas';
+import ExportarPublicoModal from './ExportarPublicoModal';
 
 const STATUS_BADGE = COR_ETAPA;
 
@@ -41,6 +42,7 @@ const TodosLeads = ({ leads, busca, loading, erro, onAbrir, onEditar }: Props) =
     const [semPerdidos, setSemPerdidos] = useState(true);
     const [coluna, setColuna] = useState<Coluna>('created_at');
     const [asc, setAsc] = useState(false);
+    const [exportando, setExportando] = useState(false);
 
     const origens = useMemo(
         () => [...new Set(leads.map(l => (l.source || '').trim()).filter(Boolean))].sort(),
@@ -131,7 +133,18 @@ const TodosLeads = ({ leads, busca, loading, erro, onAbrir, onEditar }: Props) =
                 <span className="ml-auto text-xs font-mono text-gray-500">
                     {lista.length} de {leads.length} leads
                 </span>
+                <button
+                    type="button"
+                    onClick={() => setExportando(true)}
+                    className="flex items-center gap-1 px-3 py-1.5 border-2 border-secondary rounded-sm bg-white text-secondary text-xs font-bold uppercase hover:bg-secondary hover:text-white transition-colors"
+                    title="Baixar lista para público personalizado, semelhante ou exclusão na Meta"
+                >
+                    <span className="material-symbols-outlined text-[16px]">campaign</span>
+                    Exportar para Meta
+                </button>
             </div>
+
+            <ExportarPublicoModal aberto={exportando} onClose={() => setExportando(false)} idsFiltrados={lista.map(l => l.id)} />
 
             <div className="overflow-auto flex-1">
                 <table className="w-full text-left border-collapse min-w-[860px]">
