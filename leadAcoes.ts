@@ -1,7 +1,7 @@
 // Acoes do atendimento usadas na lista "Falar hoje", no perfil e no orcamento.
 import { supabase } from './supabaseClient';
 import {
-    ItemContato, MOTIVO_SEM_RESPOSTA, contatoEncerra, dataProximoContato, diasAteProximo, fimDaEspera, notaTentativa,
+    DIAS_ENTRE_NUTRICAO, ItemContato, MOTIVO_SEM_RESPOSTA, proximoContatoNutricao, contatoEncerra, dataProximoContato, diasAteProximo, fimDaEspera, notaTentativa,
 } from './leadContato';
 import { ETAPA } from './etapas';
 
@@ -61,6 +61,43 @@ export async function mensagemEnviada(item: ItemContato, usuarioId: string): Pro
         if (erroEtapa) throw new Error(`Mensagem registrada, mas a etapa não mudou para ${ETAPA.conversa}: ` + erroEtapa.message);
     }
     return `Mensagem registrada. Sem resposta até ${limite.toLocaleDateString('pt-BR')}, ${lead.name} é classificado sozinho e o próximo follow-up fica agendado.`;
+}
+
+// Casamento longe: o lead entra em nutricao ate a data de retomar.
+export async function entrarNutricao(item: ItemContato, retomarEm: string): Promise<string> {
+    const { lead, followup } = item;
+    const proximo = proximoContatoNutricao(retomarEm);
+    const { error } = await supabase.rpc('agendar_nutricao', {
+        p_lead_id: lead.id,
+        p_followup_id: followup?.id ?? null,
+        p_resultado: 'retomar_perto',
+        p_conteudo_id: null,
+        p_retomar_em: retomarEm,
+        p_proximo: proximo.toISOString(),
+    });
+    if (error) throw new Error('Não foi possível colocar em nutrição. Nada foi alterado: ' + error.message);
+    const retomar = new Date(retomarEm + 'T12:00:00').toLocaleDateString('pt-BR');
+    return `${lead.name} entrou em nutrição: um conteúdo a cada ${DIAS_ENTRE_NUTRICAO} dias até ${retomar}, quando volta para o follow-up. Próximo em ${proximo.toLocaleDateString('pt-BR')}.`;
+}
+
+// Conteudo de nutricao enviado: agenda o proximo (ou o dia de retomar).
+export async function conteudoEnviado(item: ItemContato, conteudoId: string | null): Promise<string> {
+    const { lead, followup } = item;
+    if (!lead.retomar_em) throw new Error('Este lead não está mais em nutrição. Recarregue a página.');
+    const proximo = proximoContatoNutricao(lead.retomar_em);
+    const { error } = await supabase.rpc('agendar_nutricao', {
+        p_lead_id: lead.id,
+        p_followup_id: followup?.id ?? null,
+        p_resultado: 'nutricao',
+        p_conteudo_id: conteudoId,
+        p_retomar_em: null,
+        p_proximo: proximo.toISOString(),
+    });
+    if (error) throw new Error('Não foi possível registrar o conteúdo. Nada foi alterado: ' + error.message);
+    const retomando = proximo.toISOString().slice(0, 10) >= lead.retomar_em;
+    return retomando
+        ? `Conteúdo registrado. Em ${proximo.toLocaleDateString('pt-BR')} ${lead.name} volta para o follow-up normal.`
+        : `Conteúdo registrado. Próximo conteúdo para ${lead.name} em ${proximo.toLocaleDateString('pt-BR')}.`;
 }
 
 // Reserva caso a classificacao automatica atrase: faz o mesmo que ela.

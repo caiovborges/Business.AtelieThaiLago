@@ -1,8 +1,9 @@
 import React from 'react';
 import {
-    DIAS_AGUARDANDO_RESPOSTA, ItemContato, LIMITE_TENTATIVAS, LeadContato, MENSAGENS, contatoEncerra, esperaResposta, linkConversa, linkWhatsApp, montarMensagem,
-    esperaVencida, ordenarContatos, organizarContatos, prioridadeContato,
+    DIAS_AGUARDANDO_RESPOSTA, ItemContato, LIMITE_TENTATIVAS, LeadContato, MENSAGENS, contatoEncerra, esperaResposta, linkConversa,
+    esperaVencida, ordenarContatos, organizarContatos, prioridadeContato, sugestaoRetomar, MESES_ANTES_RETOMAR,
 } from '../leadContato';
+import { escolherConteudo, whatsappDoItem } from '../nutricao';
 
 interface FalarHojeProps<L extends LeadContato> {
     leads: L[];
@@ -19,12 +20,14 @@ interface FalarHojeProps<L extends LeadContato> {
     onEnviada: (item: ItemContato<L>) => void;
     onNaoRespondeu: (item: ItemContato<L>) => void;
     onPerdido: (item: ItemContato<L>) => void;
+    onConteudoEnviado: (item: ItemContato<L>, conteudoId: string | null) => void;
+    onNutrir: (item: ItemContato<L>) => void;
 }
 
 const formatarData = (valor: string) =>
     new Date(valor).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 
-function FalarHoje<L extends LeadContato>({ leads, visao = 'hoje', ordem, loading, erro, ocupado, temOrcamento, onAbrir, onOrcamento, onFeito, onEnviada, onNaoRespondeu, onPerdido }: FalarHojeProps<L>) {
+function FalarHoje<L extends LeadContato>({ leads, visao = 'hoje', ordem, loading, erro, ocupado, temOrcamento, onAbrir, onOrcamento, onFeito, onEnviada, onNaoRespondeu, onPerdido, onConteudoEnviado, onNutrir }: FalarHojeProps<L>) {
     const { hoje, atrasados, semContato, aguardando, agendados, casamentoPassado } = organizarContatos(leads, new Date(), temOrcamento);
 
     if (erro) {
@@ -45,8 +48,12 @@ function FalarHoje<L extends LeadContato>({ leads, visao = 'hoje', ordem, loadin
     }
 
     const renderItem = (item: ItemContato<L>) => {
-        const { lead, followup, contatosFeitos, tentativas, mensagem, aguardando: emEspera } = item;
-        const whatsapp = emEspera ? linkConversa(lead.phone) : linkWhatsApp(lead.phone, montarMensagem(mensagem, lead));
+        const { lead, followup, contatosFeitos, tentativas, mensagem, aguardando: emEspera, nutricao } = item;
+        const whatsapp = emEspera ? linkConversa(lead.phone) : whatsappDoItem(item);
+        const conteudo = nutricao ? escolherConteudo(lead, lead.lead_followups || []) : null;
+        // Casamento longe: pode ir para nutricao a qualquer momento (inclusive no encerramento)
+        const podeNutrir = !nutricao && !!sugestaoRetomar(lead.event_date);
+        const retomarEm = lead.retomar_em ? new Date(lead.retomar_em + 'T12:00:00').toLocaleDateString('pt-BR') : '';
         const botaoPrincipal = 'h-11 px-3 bg-primary text-white border-2 border-secondary rounded-sm flex items-center justify-center gap-1 text-xs font-bold uppercase disabled:opacity-50';
         const botaoSecundario = 'h-11 px-3 bg-white text-secondary border-2 border-secondary rounded-sm flex items-center justify-center gap-1 text-xs font-bold uppercase hover:bg-gray-50 transition-colors disabled:opacity-50';
         const { motivo } = prioridadeContato(item);
@@ -90,7 +97,12 @@ function FalarHoje<L extends LeadContato>({ leads, visao = 'hoje', ordem, loadin
                             <span className="font-mono font-bold text-orange-600">Sem resposta automático em {formatarData(followup.scheduled_at)}</span>
                         )}
                     </p>
-                    {emEspera ? (
+                    {nutricao ? (
+                        <p className="text-xs text-secondary mt-1">
+                            <span className="font-bold">Nutrição{retomarEm ? ` até ${retomarEm}` : ''}:</span>{' '}
+                            {conteudo ? conteudo.titulo : 'cadastre conteúdos na tela Mensagens'}
+                        </p>
+                    ) : emEspera ? (
                         <p className="text-xs text-secondary mt-1">
                             <span className="font-bold">Mensagem enviada em</span> {formatarData(followup!.enviada_em!)}. Aguardando resposta.
                         </p>
@@ -130,7 +142,19 @@ function FalarHoje<L extends LeadContato>({ leads, visao = 'hoje', ordem, loadin
                         <span className="material-symbols-outlined text-[18px]">request_quote</span>
                         Orçamento
                     </button>
-                    {emEspera ? (
+                    {nutricao ? (
+                        <>
+                            <button type="button" disabled={ocupado} onClick={() => onConteudoEnviado(item, conteudo?.id ?? null)} className={botaoPrincipal}
+                                title="Registra o conteúdo e agenda o próximo">
+                                <span className="material-symbols-outlined text-[18px]">photo_library</span>
+                                Conteúdo enviado
+                            </button>
+                            <button type="button" disabled={ocupado} onClick={() => onFeito(item)} className={botaoSecundario}>
+                                <span className="material-symbols-outlined text-[18px]">forum</span>
+                                Respondeu
+                            </button>
+                        </>
+                    ) : emEspera ? (
                         <>
                             <button type="button" disabled={ocupado} onClick={() => onFeito(item)} className={botaoPrincipal}>
                                 <span className="material-symbols-outlined text-[18px]">forum</span>
@@ -158,6 +182,13 @@ function FalarHoje<L extends LeadContato>({ leads, visao = 'hoje', ordem, loadin
                         <button type="button" disabled={ocupado} onClick={() => onFeito(item)} className={botaoPrincipal}>
                             <span className="material-symbols-outlined text-[18px]">check</span>
                             Contato feito
+                        </button>
+                    )}
+                    {podeNutrir && (
+                        <button type="button" disabled={ocupado} onClick={() => onNutrir(item)} className={botaoSecundario}
+                            title={`Casamento longe: manda conteúdos do ateliê e retoma ${MESES_ANTES_RETOMAR} meses antes`}>
+                            <span className="material-symbols-outlined text-[18px]">spa</span>
+                            Nutrir
                         </button>
                     )}
                     <button

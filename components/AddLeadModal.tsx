@@ -37,6 +37,8 @@ export interface EditingLead extends LeadFormData {
     id: string;
     created_at: string;
     motivo_perda?: string | null;
+    // Em nutricao ate esta data (casamento longe)
+    retomar_em?: string | null;
     _estado_id?: number | null;
     lead_followups?: FollowupResumo[];
 }

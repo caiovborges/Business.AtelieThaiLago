@@ -7,7 +7,9 @@ import LeadFollowups from '../components/LeadFollowups';
 import OrcamentoModal, { CAMPOS_ORCAMENTO, OrcamentoSalvo, itensComValor, rotuloQuantidade } from '../components/OrcamentoModal';
 import ResultadoContatoModal, { AlvoResultado } from '../components/ResultadoContatoModal';
 import { ChaveMensagem, FollowupResumo, LIMITE_TENTATIVAS, MENSAGENS, ROTULO_RESULTADO, dataDoContato, esperaResposta, feitosEmOrdem, esperaVencida, linkConversa, linkWhatsApp, montarMensagem, resumoContato, temOrcamentoLead } from '../leadContato';
-import { mensagemEnviada, naoRespondeu } from '../leadAcoes';
+import { conteudoEnviado, mensagemEnviada, naoRespondeu } from '../leadAcoes';
+import { escolherConteudo, whatsappDoItem } from '../nutricao';
+import { MESES_ANTES_RETOMAR, sugestaoRetomar } from '../leadContato';
 import FecharLeadModal from '../components/FecharLeadModal';
 import { abrirContrato, enviarContrato, removerContrato } from '../contratos';
 import { formatarReais } from '../valores';
@@ -100,7 +102,7 @@ const LeadProfile = () => {
         if (!id) return;
         const [leadRes, followupsRes, orcamentosRes, eventoRes] = await Promise.all([
             supabase.from('leads').select('*, cidades(nome, estado_id, estados(sigla))').eq('id', id).maybeSingle(),
-            supabase.from('lead_followups').select('id, scheduled_at, done, type, notes, resultado, feito_em, enviada_em').eq('lead_id', id).order('scheduled_at', { ascending: true }),
+            supabase.from('lead_followups').select('id, scheduled_at, done, type, notes, resultado, feito_em, enviada_em, nutricao, conteudo_id').eq('lead_id', id).order('scheduled_at', { ascending: true }),
             supabase.from('propostas').select(CAMPOS_ORCAMENTO).eq('lead_id', id).order('created_at', { ascending: false }),
             supabase.from('eventos').select('id, status, contrato_url, plano_fechado, valor_previsto').eq('lead_id', id).maybeSingle(),
         ]);
@@ -161,7 +163,8 @@ const LeadProfile = () => {
     const anteriores = comValores.filter(o => !atuais.includes(o));
     const resumo = resumoContato({ ...lead, lead_followups: followups }, temOrcamentoLead(lead.status, comValores.length > 0));
     const chaveMensagem = mensagemEscolhida || resumo.mensagem;
-    const whatsapp = resumo.aguardando ? linkConversa(lead.phone) : linkWhatsApp(lead.phone, montarMensagem(chaveMensagem, lead));
+    const whatsapp = resumo.aguardando ? linkConversa(lead.phone) : whatsappDoItem(resumo, chaveMensagem);
+    const conteudoDaVez = resumo.nutricao ? escolherConteudo(lead, followups) : null;
     const emAtendimento = !perdido && lead.status !== ETAPA.fechado;
     const cidade = lead.cidades ? `${lead.cidades.nome}${lead.cidades.estados ? ` - ${lead.cidades.estados.sigla}` : ''}` : '';
 
@@ -234,6 +237,26 @@ const LeadProfile = () => {
                                 Fechar
                             </button>
                         )}
+                        {emAtendimento && resumo.nutricao && (
+                            <>
+                                <button type="button" disabled={ocupado} onClick={() => { setMensagemEscolhida(''); executar(() => conteudoEnviado(resumo, conteudoDaVez?.id ?? null)); }} className={`${botao} bg-primary text-white`}>
+                                    <span className="material-symbols-outlined text-[18px]">photo_library</span>
+                                    Conteúdo enviado
+                                </button>
+                                <button type="button" disabled={ocupado} onClick={() => setAlvoResultado({ item: resumo })} className={`${botao} bg-white text-secondary hover:bg-gray-50`}>
+                                    <span className="material-symbols-outlined text-[18px]">forum</span>
+                                    Respondeu
+                                </button>
+                            </>
+                        )}
+                        {emAtendimento && !resumo.nutricao && !evento && sugestaoRetomar(lead.event_date) && (
+                            <button type="button" disabled={ocupado} onClick={() => setAlvoResultado({ item: resumo, inicial: 'retomar_perto' })}
+                                className={`${botao} bg-emerald-50 text-emerald-800 hover:bg-emerald-100`}
+                                title={`Casamento longe: manda conteúdos do ateliê e retoma ${MESES_ANTES_RETOMAR} meses antes`}>
+                                <span className="material-symbols-outlined text-[18px]">spa</span>
+                                Nutrir
+                            </button>
+                        )}
                         {emAtendimento && resumo.aguardando && (
                             <>
                                 <button type="button" disabled={ocupado} onClick={() => setAlvoResultado({ item: resumo })} className={`${botao} bg-primary text-white`}>
@@ -260,7 +283,7 @@ const LeadProfile = () => {
                                 </button>
                             </>
                         )}
-                        {emAtendimento && !resumo.aguardando && !esperaResposta(resumo) && (
+                        {emAtendimento && !resumo.aguardando && !resumo.nutricao && !esperaResposta(resumo) && (
                             <button type="button" disabled={ocupado} onClick={() => setAlvoResultado({ item: resumo })} className={`${botao} bg-primary text-white`}>
                                 <span className="material-symbols-outlined text-[18px]">check</span>
                                 Contato feito
@@ -360,6 +383,12 @@ const LeadProfile = () => {
                                 </span>
                             ) : 'Nenhum agendado'}
                         </Dado>
+                        {lead.retomar_em && (
+                            <Dado rotulo="Em nutrição até">{dataEvento(lead.retomar_em)}</Dado>
+                        )}
+                        {resumo.nutricao && (
+                            <Dado rotulo="Conteúdo da vez">{conteudoDaVez ? conteudoDaVez.titulo : 'Cadastre conteúdos na tela Mensagens'}</Dado>
+                        )}
                         <Dado rotulo="Contatos feitos">{String(feitos.length)}</Dado>
                         <Dado rotulo="Último contato">{ultimoContato ? dataCurta(dataDoContato(ultimoContato)) : 'Nenhum'}</Dado>
                         <Dado rotulo="Último resultado">{resumo.ultimoResultado ? ROTULO_RESULTADO[resumo.ultimoResultado] : 'Não registrado'}</Dado>

@@ -8,8 +8,9 @@ import TodosLeads from '../components/TodosLeads';
 import OrcamentoModal from '../components/OrcamentoModal';
 import FecharLeadModal from '../components/FecharLeadModal';
 import ResultadoContatoModal, { AlvoResultado } from '../components/ResultadoContatoModal';
-import { linkConversa, linkWhatsApp, montarMensagem, organizarContatos, resumoContato, temOrcamentoLead } from '../leadContato';
-import { mensagemEnviada, naoRespondeu } from '../leadAcoes';
+import { linkConversa, organizarContatos, resumoContato, temOrcamentoLead } from '../leadContato';
+import { conteudoEnviado, mensagemEnviada, naoRespondeu } from '../leadAcoes';
+import { whatsappDoItem } from '../nutricao';
 import { COR_ETAPA, DESCRICAO_ETAPA, ETAPA, ETAPAS_ATIVAS, ETAPAS_ENCERRADAS } from '../etapas';
 
 const STATUS_COLORS = COR_ETAPA;
@@ -40,7 +41,7 @@ const LeadsBoard = () => {
         setLoading(true);
         const { data, error } = await supabase
             .from('leads')
-            .select('*, lead_followups(id, scheduled_at, done, type, notes, resultado, feito_em, enviada_em)')
+            .select('*, lead_followups(id, scheduled_at, done, type, notes, resultado, feito_em, enviada_em, nutricao, conteudo_id)')
             .order('created_at', { ascending: false });
 
         const { data: propsData } = await supabase
@@ -369,6 +370,8 @@ const LeadsBoard = () => {
                         onFeito={(item) => setAlvoResultado({ item })}
                         onEnviada={(item) => acaoContato(() => mensagemEnviada(item, user!.id))}
                         onNaoRespondeu={(item) => acaoContato(() => naoRespondeu(item))}
+                        onConteudoEnviado={(item, conteudoId) => acaoContato(() => conteudoEnviado(item, conteudoId))}
+                        onNutrir={(item) => setAlvoResultado({ item, inicial: 'retomar_perto' })}
                         onPerdido={(item) => setAlvoResultado({ item, inicial: 'desistiu' })}
                     />
                 ) : (viewMode === 'lost' || viewMode === 'closed') ? (
@@ -541,7 +544,7 @@ const LeadsBoard = () => {
                                                 </button>
                                                 {(() => {
                                                     const resumo = resumoContato(lead, temOrcamento(lead));
-                                                    const whatsapp = resumo.aguardando ? linkConversa(lead.phone) : linkWhatsApp(lead.phone, montarMensagem(resumo.mensagem, lead));
+                                                    const whatsapp = resumo.aguardando ? linkConversa(lead.phone) : whatsappDoItem(resumo);
                                                     return whatsapp && (
                                                         <a
                                                             href={whatsapp}

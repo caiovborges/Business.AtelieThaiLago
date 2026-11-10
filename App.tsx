@@ -18,6 +18,7 @@ import Mensagens from './pages/Mensagens';
 import AReceber from './pages/AReceber';
 import ContasFixas from './pages/ContasFixas';
 import { carregarMensagens } from './mensagensEditadas';
+import { carregarConteudos } from './nutricao';
 import CalendarPage from './pages/CalendarPage';
 import Settings from './pages/Settings';
 
@@ -65,7 +66,7 @@ const ProtectedRoute = () => {
   // Atualiza a tela quando os textos editados chegam
   React.useEffect(() => {
     if (!isApproved) return;
-    carregarMensagens().finally(() => setMensagensCarregadas(v => v + 1));
+    Promise.all([carregarMensagens(), carregarConteudos()]).finally(() => setMensagensCarregadas(v => v + 1));
   }, [isApproved]);
 
   if (loading || profileLoading) {

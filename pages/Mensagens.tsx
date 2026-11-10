@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { ChaveMensagem, MENSAGENS, montarTexto, textoMensagem, textosPersonalizados } from '../leadContato';
 import { carregarMensagens, restaurarMensagem, salvarMensagem } from '../mensagensEditadas';
+import ConteudosNutricao from '../components/ConteudosNutricao';
+import { MESES_ANTES_RETOMAR } from '../leadContato';
 
 const ORDEM: { chave: ChaveMensagem; quando: string }[] = [
     { chave: 'primeiro', quando: 'Quando o lead chega, antes de qualquer contato.' },
@@ -13,6 +15,8 @@ const ORDEM: { chave: ChaveMensagem; quando: string }[] = [
     { chave: 'confirmarReuniao', quando: 'Antes de uma reunião combinada.' },
     { chave: 'sinal', quando: 'Quando o casal quer fechar e falta o contrato ou o sinal (etapa Aguardando Sinal).' },
     { chave: 'encerramento', quando: 'Depois de 3 tentativas sem resposta. É o último contato.' },
+    { chave: 'nutricao', quando: 'Casamento longe: vai junto com o conteúdo da vez, a cada 45 dias. Escreva {link} onde o link do conteúdo deve aparecer (sem {link}, ele vai no final).' },
+    { chave: 'retomarPerto', quando: `Quando acaba a nutrição, ${MESES_ANTES_RETOMAR} meses antes do casamento: retoma a conversa para fechar.` },
 ];
 
 const NOME_EXEMPLO = 'Ana & João';
@@ -75,7 +79,7 @@ const CartaoMensagem = ({ chave, quando, onAlterado }: { chave: ChaveMensagem; q
                 <div>
                     <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Como fica</p>
                     <div className="min-h-[11rem] bg-green-50 border-2 border-green-200 p-3 text-sm text-secondary whitespace-pre-wrap break-words">
-                        {montarTexto(texto, NOME_EXEMPLO)}
+                        {montarTexto(texto.split('{link}').join('https://www.instagram.com/reel/exemplo'), NOME_EXEMPLO)}
                     </div>
                 </div>
             </div>
@@ -152,6 +156,7 @@ const Mensagens = () => {
                 {ORDEM.map(({ chave, quando }) => (
                     <CartaoMensagem key={chave} chave={chave} quando={quando} onAlterado={() => setVersao(v => v + 1)} />
                 ))}
+                <ConteudosNutricao />
             </div>
         </div>
     );

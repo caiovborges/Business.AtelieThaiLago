@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { registrarContato } from '../leadAcoes';
+import { entrarNutricao, registrarContato } from '../leadAcoes';
 import {
     ItemContato, LIMITE_TENTATIVAS, LeadContato, MENSAGENS, MOTIVOS_PERDA, ROTULO_RESULTADO,
-    dataProximoContato, diasAteProximo, esperaResposta, linkWhatsApp, montarMensagem, notaTentativa,
+    DIAS_ENTRE_NUTRICAO, MESES_ANTES_RETOMAR, dataProximoContato, diasAteProximo, esperaResposta, linkWhatsApp, montarMensagem,
+    notaTentativa, sugestaoRetomar,
 } from '../leadContato';
 import { ETAPA, avancar } from '../etapas';
 
@@ -19,7 +20,7 @@ interface ResultadoContatoModalProps<L extends LeadContato> {
     onQuerFechar: (lead: L) => void;
 }
 
-const OPCOES = ['sem_resposta', 'avaliando', 'caro', 'reuniao', 'retornar', 'quer_fechar', 'desistiu'];
+const OPCOES = ['sem_resposta', 'avaliando', 'caro', 'reuniao', 'retornar', 'quer_fechar', 'retomar_perto', 'desistiu'];
 
 const hoje = () => {
     const d = new Date();
@@ -33,6 +34,7 @@ function ResultadoContatoModal<L extends LeadContato>({ alvo, onClose, onSalvo, 
     const [motivo, setMotivo] = useState(MOTIVOS_PERDA[0]);
     const [nota, setNota] = useState('');
     const [sinalPago, setSinalPago] = useState(false);
+    const [retomarEm, setRetomarEm] = useState('');
     const [salvando, setSalvando] = useState(false);
     const [erro, setErro] = useState('');
 
@@ -46,6 +48,7 @@ function ResultadoContatoModal<L extends LeadContato>({ alvo, onClose, onSalvo, 
         setMotivo(MOTIVOS_PERDA[0]);
         setNota('');
         setSinalPago(false);
+        setRetomarEm(sugestaoRetomar(alvo?.item.lead.event_date) || '');
         setErro('');
     }, [leadId, alvo?.inicial]);
 
@@ -54,7 +57,11 @@ function ResultadoContatoModal<L extends LeadContato>({ alvo, onClose, onSalvo, 
     const { lead, followup, tentativas, temOrcamento } = item;
 
     // "Sem resposta" so e opcao aqui ao confirmar reuniao; nos demais contatos vem depois da espera.
-    const opcoes = esperaResposta(item) ? OPCOES.filter(o => o !== 'sem_resposta') : OPCOES;
+    const sugestao = sugestaoRetomar(lead.event_date);
+    const opcoes = OPCOES
+        .filter(o => o !== 'sem_resposta' || (!esperaResposta(item) && !item.nutricao))
+        // Retomar perto da data so aparece quando o casamento esta longe
+        .filter(o => o !== 'retomar_perto' || !!sugestao);
     const pedeData = resultado === 'reuniao' || resultado === 'retornar';
     const fecharAgora = resultado === 'quer_fechar' && sinalPago;
     const dias = resultado && !fecharAgora ? diasAteProximo(resultado, tentativas, temOrcamento) : null;
@@ -85,6 +92,16 @@ function ResultadoContatoModal<L extends LeadContato>({ alvo, onClose, onSalvo, 
             setErro('Escolha o que aconteceu neste contato.');
             return;
         }
+        if (resultado === 'retomar_perto') {
+            if (!retomarEm || retomarEm <= hoje()) {
+                setErro('Escolha uma data de retomar no futuro.');
+                return;
+            }
+            if (lead.event_date && retomarEm >= lead.event_date) {
+                setErro('A data de retomar precisa ser antes do casamento.');
+                return;
+            }
+        }
         if (pedeData && !data) {
             setErro(resultado === 'reuniao' ? 'Informe a data da reunião.' : 'Informe a data do retorno.');
             return;
@@ -92,6 +109,12 @@ function ResultadoContatoModal<L extends LeadContato>({ alvo, onClose, onSalvo, 
 
         setSalvando(true);
         try {
+            if (resultado === 'retomar_perto') {
+                onSalvo(await entrarNutricao(item, retomarEm));
+                onClose();
+                return;
+            }
+
             if (fecharAgora) {
                 if (followup) {
                     const { error } = await supabase.from('lead_followups').update({ resultado }).eq('id', followup.id);
@@ -179,7 +202,21 @@ function ResultadoContatoModal<L extends LeadContato>({ alvo, onClose, onSalvo, 
                         </fieldset>
                     )}
 
-                    {dataAutomatica && (
+                    {resultado === 'retomar_perto' && (
+                        <div className="flex flex-col gap-2 p-3 bg-emerald-50 border-2 border-emerald-200">
+                            <p className="text-sm text-secondary">
+                                O lead recebe um conteúdo do ateliê a cada {DIAS_ENTRE_NUTRICAO} dias e volta para o follow-up normal na data abaixo
+                                ({MESES_ANTES_RETOMAR} meses antes do casamento). A etapa não muda.
+                            </p>
+                            <div>
+                                <label htmlFor="resultado-retomar" className={estiloRotulo}>Retomar em</label>
+                                <input id="resultado-retomar" type="date" min={hoje()} max={lead.event_date || undefined}
+                                    className={estiloInput} value={retomarEm} onChange={e => setRetomarEm(e.target.value)} />
+                            </div>
+                        </div>
+                    )}
+
+                    {dataAutomatica && resultado !== 'retomar_perto' && (
                         <p className="text-sm font-mono text-gray-600">Próximo contato em {dataAutomatica.toLocaleDateString('pt-BR')}.</p>
                     )}
 
@@ -217,7 +254,7 @@ function ResultadoContatoModal<L extends LeadContato>({ alvo, onClose, onSalvo, 
                         </div>
                     )}
 
-                    {resultado && !fecharAgora && resultado !== 'desistiu' && (
+                    {resultado && !fecharAgora && resultado !== 'desistiu' && resultado !== 'retomar_perto' && (
                         <div>
                             <label htmlFor="resultado-nota" className={estiloRotulo}>Anotação para o próximo contato</label>
                             <input id="resultado-nota" className={estiloInput} value={nota} onChange={e => setNota(e.target.value)} placeholder="Opcional" />

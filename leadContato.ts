@@ -9,6 +9,8 @@ export interface FollowupResumo {
     resultado?: string | null;
     feito_em?: string | null;
     enviada_em?: string | null;
+    nutricao?: boolean | null;
+    conteudo_id?: string | null;
 }
 
 export interface LeadContato {
@@ -19,12 +21,14 @@ export interface LeadContato {
     event_date: string | null;
     location: string | null;
     created_at?: string;
+    retomar_em?: string | null;
+    services?: string[] | null;
     lead_followups?: FollowupResumo[];
 }
 
 export type ChaveMensagem =
     | 'primeiro' | 'continuidade' | 'retomar' | 'encerramento'
-    | 'posOrcamento' | 'caro' | 'lembrete' | 'reuniao' | 'confirmarReuniao' | 'sinal';
+    | 'posOrcamento' | 'caro' | 'lembrete' | 'reuniao' | 'confirmarReuniao' | 'sinal' | 'nutricao' | 'retomarPerto';
 
 export interface ItemContato<L extends LeadContato = LeadContato> {
     lead: L;
@@ -35,6 +39,8 @@ export interface ItemContato<L extends LeadContato = LeadContato> {
     temOrcamento: boolean;
     mensagem: ChaveMensagem;
     aguardando: boolean;
+    // Contato de nutricao: manda um conteudo do atelie e nao espera resposta
+    nutricao: boolean;
 }
 
 import { ETAPA, ETAPAS_ATIVAS, ETAPAS_COM_ORCAMENTO } from './etapas';
@@ -52,6 +58,8 @@ export const ROTULO_RESULTADO: Record<string, string> = {
     quer_fechar: 'Quer fechar',
     desistiu: 'Desistiu ou fechou com outro',
     orcamento_enviado: 'Orçamento enviado',
+    retomar_perto: 'Casamento longe: retomar perto da data',
+    nutricao: 'Conteúdo enviado (nutrição)',
 };
 
 export const MOTIVOS_PERDA = [
@@ -100,6 +108,14 @@ export const MENSAGENS: Record<ChaveMensagem, { titulo: string; texto: string }>
     confirmarReuniao: {
         titulo: 'Confirmar reunião',
         texto: 'Olá {nome}! Tudo bem? Tudo certinho com a nossa reunião?',
+    },
+    nutricao: {
+        titulo: 'Nutrição (conteúdo do ateliê)',
+        texto: 'Oi {nome}! Tudo bem? Lembrei de vocês e separei esse conteúdo do ateliê para inspirar os preparativos do casamento ✨\n\n{link}',
+    },
+    retomarPerto: {
+        titulo: 'Retomar perto da data',
+        texto: 'Olá {nome}! Tudo bem? O casamento de vocês está chegando 💖 Passando para saber como estão os preparativos e se ainda pensam em ter a pintura ao vivo no grande dia. Quer que eu reserve a data de vocês?',
     },
     sinal: {
         titulo: 'Contrato e sinal',
@@ -182,7 +198,10 @@ export function mensagemSugerida(
     temOrcamento: boolean,
     ultimoResultado: string | null,
     status = '',
+    nutricao = false,
 ): ChaveMensagem {
+    if (nutricao) return 'nutricao';
+    if (ultimoResultado === 'retomar_perto' || ultimoResultado === 'nutricao') return 'retomarPerto';
     if (ultimoResultado === 'reuniao') return 'confirmarReuniao';
     if (tentativas >= LIMITE_TENTATIVAS) return 'encerramento';
     if (status === ETAPA.sinal) return 'sinal';
@@ -211,13 +230,15 @@ export function resumoContato<L extends LeadContato>(lead: L, temOrcamento: bool
         tentativas,
         ultimoResultado,
         temOrcamento,
-        mensagem: mensagemSugerida(feitos.length, tentativas, temOrcamento, ultimoResultado, lead.status),
+        mensagem: mensagemSugerida(feitos.length, tentativas, temOrcamento, ultimoResultado, lead.status, !!proximo?.nutricao),
         aguardando: !!proximo?.enviada_em,
+        nutricao: !!proximo?.nutricao,
     };
 }
 
 // Confirmar uma reuniao nao abre espera: o resultado e registrado na hora.
-export const esperaResposta = (item: ItemContato) => item.mensagem !== 'confirmarReuniao';
+// Nutricao tambem nao: e so um conteudo, sem cobrar resposta.
+export const esperaResposta = (item: ItemContato) => item.mensagem !== 'confirmarReuniao' && !item.nutricao;
 
 // Depois desta espera, o banco classifica sozinho como sem resposta.
 export const DIAS_AGUARDANDO_RESPOSTA = 3;
@@ -255,6 +276,42 @@ export function diasAteProximo(resultado: string, tentativas: number, temOrcamen
     return (temOrcamento ? PRAZOS_COM_ORCAMENTO : PRAZOS_SEM_ORCAMENTO)[tentativas];
 }
 
+// ---------- Casamento longe: nutricao ate retomar ----------
+
+export const MESES_ANTES_RETOMAR = 4;
+export const DIAS_ENTRE_NUTRICAO = 45;
+// So vale nutrir se a data de retomar estiver pelo menos este tanto a frente
+export const DIAS_MINIMOS_PARA_NUTRIR = 30;
+
+const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+// Data do casamento menos N meses, no calendario (31/08 - 6 meses = 28 ou 29/02).
+export function mesesAntes(dataISO: string, meses: number): string {
+    const [a, m, d] = dataISO.slice(0, 10).split('-').map(Number);
+    const total = a * 12 + (m - 1) - meses;
+    const ano = Math.floor(total / 12);
+    const mes = total % 12;
+    const ultimoDia = new Date(ano, mes + 1, 0).getDate();
+    return iso(new Date(ano, mes, Math.min(d, ultimoDia)));
+}
+
+// Sugestao de quando retomar; vazio quando o casamento nao esta longe o bastante.
+export function sugestaoRetomar(eventDate: string | null | undefined, agora: Date = new Date()): string | null {
+    if (!eventDate) return null;
+    const retomar = mesesAntes(eventDate, MESES_ANTES_RETOMAR);
+    const limite = new Date(agora);
+    limite.setDate(limite.getDate() + DIAS_MINIMOS_PARA_NUTRIR);
+    return retomar > iso(limite) ? retomar : null;
+}
+
+// Proximo contato da nutricao: daqui a 45 dias, ou o dia de retomar se vier antes. Sempre 9h.
+export function proximoContatoNutricao(retomarEm: string, agora: Date = new Date()): Date {
+    const nutricao = dataProximoContato(DIAS_ENTRE_NUTRICAO, agora);
+    const [a, m, d] = retomarEm.split('-').map(Number);
+    const retomar = new Date(a, m - 1, d, 9, 0, 0, 0);
+    return nutricao < retomar ? nutricao : retomar;
+}
+
 export function dataProximoContato(dias: number, agora: Date = new Date()): Date {
     const data = new Date(agora);
     data.setDate(data.getDate() + dias);
@@ -266,6 +323,8 @@ const INTERESSE = ['reuniao', 'quer_fechar', 'retornar', 'caro', 'avaliando'];
 const DIAS_CASAMENTO_PROXIMO = 90;
 
 export function prioridadeContato(item: ItemContato, agora: Date = new Date()): { nivel: number; motivo: string } {
+    if (item.nutricao) return { nivel: 4, motivo: 'Nutrição' };
+    if (item.ultimoResultado === 'retomar_perto' || item.ultimoResultado === 'nutricao') return { nivel: 1, motivo: 'Retomar: casamento chegando' };
     if (item.contatosFeitos === 0 && !item.temOrcamento) return { nivel: 0, motivo: 'Lead novo' };
     if (item.ultimoResultado && INTERESSE.includes(item.ultimoResultado)) {
         return { nivel: 1, motivo: ROTULO_RESULTADO[item.ultimoResultado] };
