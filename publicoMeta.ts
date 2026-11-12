@@ -20,6 +20,7 @@ export interface Pessoa {
     origem: string | null;
     motivoPerda: string | null;
     valor: number;
+    altoPadrao: boolean;
 }
 
 export interface Publico {
@@ -40,6 +41,12 @@ export const PUBLICOS: Publico[] = [
         uso: 'EXCLUIR de todas as campanhas: já contrataram. Também é a melhor base para um público SEMELHANTE, porque leva o valor do contrato e a Meta procura pessoas parecidas com quem fechou.',
         comValor: true,
         filtrar: p => p.status === ETAPA.fechado,
+    },
+    {
+        id: 'alto-padrao',
+        nome: 'Alto padrão',
+        uso: 'Base para um público SEMELHANTE de alto padrão: os leads com a etiqueta Alto padrão (fechados ou não). A Meta precisa reconhecer pelo menos 100 pessoas, então junte uns 150 a 200 marcados antes de criar o semelhante.',
+        filtrar: p => p.altoPadrao,
     },
     {
         id: 'todos',
@@ -194,7 +201,7 @@ const cidadeDe = (c: any) => ({
 export async function carregarPessoas(): Promise<Pessoa[]> {
     // So leads: a lista de clientes esta desatualizada. Quem fechou e o lead em Fechado.
     const [leads, eventos] = await Promise.all([
-        supabase.from('leads').select('id, name, phone, email, status, event_date, services, source, motivo_perda, cidades(nome, estados(sigla))'),
+        supabase.from('leads').select('id, name, phone, email, status, event_date, services, source, motivo_perda, alto_padrao, cidades(nome, estados(sigla))'),
         supabase.from('eventos').select('lead_id, valor_previsto, status').not('lead_id', 'is', null),
     ]);
     const erro = leads.error || eventos.error;
@@ -220,6 +227,7 @@ export async function carregarPessoas(): Promise<Pessoa[]> {
         origem: l.source,
         motivoPerda: l.motivo_perda,
         valor: valorLead.get(l.id) || 0,
+        altoPadrao: !!l.alto_padrao,
     }));
 }
 

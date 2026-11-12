@@ -145,6 +145,16 @@ const LeadsBoard = () => {
         e.preventDefault();
     };
 
+    // Etiqueta Alto padrao: marca na hora e desfaz se o banco recusar
+    const marcarAltoPadrao = async (lead: EditingLead, marcar: boolean) => {
+        setLeads(prev => prev.map(l => (l.id === lead.id ? { ...l, alto_padrao: marcar } : l)));
+        const { error } = await supabase.from('leads').update({ alto_padrao: marcar }).eq('id', lead.id);
+        if (error) {
+            setLeads(prev => prev.map(l => (l.id === lead.id ? { ...l, alto_padrao: !marcar } : l)));
+            alert('Não foi possível salvar a etiqueta: ' + error.message);
+        }
+    };
+
     const handleDrop = async (e: React.DragEvent, newStatus: string) => {
         e.preventDefault();
         const leadId = e.dataTransfer.getData('leadId');
@@ -353,6 +363,7 @@ const LeadsBoard = () => {
                         erro={erroLeads}
                         onAbrir={(lead) => navigate(`/leads/${lead.id}`)}
                         onEditar={(lead) => { setEditingLead(lead); setModalOpen(true); }}
+                        onAltoPadrao={marcarAltoPadrao}
                     />
                 ) : (viewMode === 'hoje' || viewMode === 'aguardando') ? (
                     <FalarHoje<EditingLead>

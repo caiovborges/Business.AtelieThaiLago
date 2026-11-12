@@ -32,14 +32,16 @@ interface Props {
     erro: string;
     onAbrir: (lead: EditingLead) => void;
     onEditar: (lead: EditingLead) => void;
+    onAltoPadrao: (lead: EditingLead, marcar: boolean) => void;
 }
 
-const TodosLeads = ({ leads, busca, loading, erro, onAbrir, onEditar }: Props) => {
+const TodosLeads = ({ leads, busca, loading, erro, onAbrir, onEditar, onAltoPadrao }: Props) => {
     const [status, setStatus] = useState('');
     const [origem, setOrigem] = useState('');
     const [quando, setQuando] = useState<'' | 'futuro' | 'passado' | 'sem'>('');
     const [servico, setServico] = useState('');
     const [semPerdidos, setSemPerdidos] = useState(true);
+    const [soAltoPadrao, setSoAltoPadrao] = useState(false);
     const [coluna, setColuna] = useState<Coluna>('created_at');
     const [asc, setAsc] = useState(false);
     const [exportando, setExportando] = useState(false);
@@ -58,7 +60,8 @@ const TodosLeads = ({ leads, busca, loading, erro, onAbrir, onEditar }: Props) =
 
     const lista = leads
         .filter(l => buscaLead(l, busca))
-        .filter(l => status ? l.status === status : !(semPerdidos && encerrado(l.status)))
+        .filter(l => status || soAltoPadrao ? !status || l.status === status : !(semPerdidos && encerrado(l.status)))
+        .filter(l => !soAltoPadrao || l.alto_padrao)
         .filter(l => !servico || (servico === '__vazio'
             ? !(l.services || []).length
             : (l.services || []).some(s => s.trim() === servico)))
@@ -143,16 +146,26 @@ const TodosLeads = ({ leads, busca, loading, erro, onAbrir, onEditar }: Props) =
                     </select>
                 </div>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                    <label className={`flex items-center gap-1.5 text-xs font-mono select-none ${status ? 'text-gray-300' : 'text-gray-600 cursor-pointer'}`}
-                        title={status ? 'Desligado enquanto uma etapa está escolhida' : undefined}>
+                    <label className={`flex items-center gap-1.5 text-xs font-mono select-none ${status || soAltoPadrao ? 'text-gray-300' : 'text-gray-600 cursor-pointer'}`}
+                        title={status || soAltoPadrao ? 'Desligado enquanto uma etapa ou o alto padrão está escolhido' : undefined}>
                         <input
                             type="checkbox"
                             className="accent-primary"
                             checked={semPerdidos}
-                            disabled={!!status}
+                            disabled={!!status || soAltoPadrao}
                             onChange={e => setSemPerdidos(e.target.checked)}
                         />
                         Esconder perdidos e sem resposta
+                    </label>
+                    <label className="flex items-center gap-1.5 text-xs font-mono select-none text-gray-600 cursor-pointer"
+                        title="Mostra só os leads marcados com a estrela (inclusive perdidos)">
+                        <input
+                            type="checkbox"
+                            className="accent-amber-500"
+                            checked={soAltoPadrao}
+                            onChange={e => setSoAltoPadrao(e.target.checked)}
+                        />
+                        Só alto padrão ({leads.filter(l => l.alto_padrao).length})
                     </label>
                     <span className="ml-auto text-xs font-mono text-gray-500 whitespace-nowrap">
                         {lista.length} de {leads.length} leads
@@ -191,6 +204,16 @@ const TodosLeads = ({ leads, busca, loading, erro, onAbrir, onEditar }: Props) =
                                 {lead.phone && <span className="text-xs font-mono text-gray-600">{lead.phone}</span>}
                                 {(lead.services || []).length > 0 && <span className="text-xs text-gray-600">{lead.services.join(', ')}</span>}
                                 <span className="text-[11px] text-gray-400">{[lead.source, dataBR(lead.created_at) && `chegou em ${dataBR(lead.created_at)}`].filter(Boolean).join(' · ')}</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => onAltoPadrao(lead, !lead.alto_padrao)}
+                                className={`p-2 rounded-full transition-colors ${lead.alto_padrao ? 'text-amber-500 hover:text-amber-600' : 'text-gray-300 hover:text-amber-500'}`}
+                                aria-pressed={!!lead.alto_padrao}
+                                aria-label={`${lead.alto_padrao ? 'Tirar' : 'Marcar'} ${lead.name} como alto padrão`}
+                                title={lead.alto_padrao ? 'Alto padrão (clique para tirar)' : 'Marcar como alto padrão'}
+                            >
+                                <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: `'FILL' ${lead.alto_padrao ? 1 : 0}` }}>star</span>
                             </button>
                             <button
                                 type="button"
@@ -258,7 +281,17 @@ const TodosLeads = ({ leads, busca, loading, erro, onAbrir, onEditar }: Props) =
                                     </td>
                                     <td className="p-3 text-xs text-gray-600 max-w-[170px] hidden lg:table-cell">{lead.source || '-'}</td>
                                     <td className="p-3 text-xs font-mono text-gray-500 whitespace-nowrap hidden lg:table-cell">{dataBR(lead.created_at)}</td>
-                                    <td className="p-3 pr-4 lg:pr-5 text-right">
+                                    <td className="p-3 pr-4 lg:pr-5 text-right whitespace-nowrap">
+                                        <button
+                                type="button"
+                                onClick={() => onAltoPadrao(lead, !lead.alto_padrao)}
+                                className={`p-1.5 rounded-full transition-colors ${lead.alto_padrao ? 'text-amber-500 hover:text-amber-600' : 'text-gray-300 hover:text-amber-500'}`}
+                                aria-pressed={!!lead.alto_padrao}
+                                aria-label={`${lead.alto_padrao ? 'Tirar' : 'Marcar'} ${lead.name} como alto padrão`}
+                                title={lead.alto_padrao ? 'Alto padrão (clique para tirar)' : 'Marcar como alto padrão'}
+                            >
+                                <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: `'FILL' ${lead.alto_padrao ? 1 : 0}` }}>star</span>
+                            </button>
                                         <button
                                             type="button"
                                             onClick={() => onEditar(lead)}

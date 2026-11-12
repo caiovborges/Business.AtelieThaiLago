@@ -39,6 +39,8 @@ export interface EditingLead extends LeadFormData {
     motivo_perda?: string | null;
     // Em nutricao ate esta data (casamento longe)
     retomar_em?: string | null;
+    // Etiqueta marcada a mao: perfil de alto padrao (publico da Meta)
+    alto_padrao?: boolean;
     _estado_id?: number | null;
     lead_followups?: FollowupResumo[];
 }

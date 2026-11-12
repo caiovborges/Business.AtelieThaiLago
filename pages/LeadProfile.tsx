@@ -200,6 +200,14 @@ const LeadProfile = () => {
             return 'Contrato anexado.';
         });
 
+    const alternarAltoPadrao = () =>
+        executar(async () => {
+            const marcar = !lead.alto_padrao;
+            const { error } = await supabase.from('leads').update({ alto_padrao: marcar }).eq('id', lead.id);
+            if (error) throw new Error('Erro ao salvar a etiqueta: ' + error.message);
+            return marcar ? 'Marcado como alto padrão.' : 'Etiqueta alto padrão retirada.';
+        });
+
     const salvarDados = async (dados: LeadFormData) => {
         const { error } = await supabase.from('leads').update({ ...dados, event_date: dados.event_date || null }).eq('id', lead.id);
         if (error) throw error;
@@ -217,10 +225,16 @@ const LeadProfile = () => {
                     Leads
                 </Link>
 
-                <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+                <header className="flex flex-col xl:flex-row xl:items-end justify-between gap-4">
                     <div className="min-w-0">
                         <h1 className="font-display text-3xl md:text-4xl font-black tracking-tight text-secondary break-words">{lead.name}</h1>
                         <p className="mt-1 text-sm text-gray-600">Casamento: {dataEvento(lead.event_date)}{lead.location ? ` · ${lead.location}` : ''}</p>
+                        <button type="button" disabled={ocupado} onClick={alternarAltoPadrao} aria-pressed={!!lead.alto_padrao}
+                            className={`mt-2 inline-flex items-center gap-1 whitespace-nowrap px-2.5 py-1 border rounded-full text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 ${lead.alto_padrao ? 'bg-amber-100 border-amber-400 text-amber-800 hover:bg-amber-200' : 'bg-white border-gray-300 text-gray-400 hover:border-amber-400 hover:text-amber-700'}`}
+                            title={lead.alto_padrao ? 'Clique para tirar a etiqueta' : 'Marcar para o público de alto padrão da Meta'}>
+                            <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: `'FILL' ${lead.alto_padrao ? 1 : 0}` }}>star</span>
+                            {lead.alto_padrao ? 'Alto padrão' : 'Marcar alto padrão'}
+                        </button>
                     </div>
                     <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 shrink-0">
                         {whatsapp ? (
