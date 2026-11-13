@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ChaveMensagem, MENSAGENS, montarTexto, textoMensagem, textosPersonalizados } from '../leadContato';
 import { carregarMensagens, restaurarMensagem, salvarMensagem } from '../mensagensEditadas';
 import ConteudosNutricao from '../components/ConteudosNutricao';
+import ListasMensagem from '../components/ListasMensagem';
 import { MESES_ANTES_RETOMAR } from '../leadContato';
 
 const ORDEM: { chave: ChaveMensagem; quando: string }[] = [
@@ -153,6 +154,8 @@ const Mensagens = () => {
                         Estes são os textos que abrem no WhatsApp. Escreva {'{nome}'} onde o nome do casal deve aparecer. A mudança vale para os próximos contatos.
                     </p>
                 </header>
+                <ListasMensagem />
+                <h2 className="font-display text-2xl font-black tracking-tight text-secondary mt-2">Mensagens do follow-up</h2>
                 {ORDEM.map(({ chave, quando }) => (
                     <CartaoMensagem key={chave} chave={chave} quando={quando} onAlterado={() => setVersao(v => v + 1)} />
                 ))}

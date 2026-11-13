@@ -15,6 +15,7 @@ import Financeiro from './pages/Financeiro';
 import LeadsBoard from './pages/LeadsBoard';
 import LeadProfile from './pages/LeadProfile';
 import Mensagens from './pages/Mensagens';
+import EnvioLista from './pages/EnvioLista';
 import AReceber from './pages/AReceber';
 import ContasFixas from './pages/ContasFixas';
 import { carregarMensagens } from './mensagensEditadas';
@@ -132,6 +133,7 @@ const App = () => {
               <Route path="leads" element={<LeadsBoard />} />
               <Route path="leads/:id" element={<LeadProfile />} />
               <Route path="mensagens" element={<Mensagens />} />
+              <Route path="mensagens/listas/:id" element={<EnvioLista />} />
               <Route path="calendar" element={<CalendarPage />} />
               <Route path="clients" element={<ClientRegistry />} />
               <Route path="events" element={<EventCanvas />} />
