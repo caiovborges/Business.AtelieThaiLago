@@ -161,7 +161,8 @@ export function telefoneWhatsApp(telefone: string | null | undefined): string | 
 
 export function linkWhatsApp(telefone: string | null | undefined, mensagem: string): string | null {
     const numero = telefoneWhatsApp(telefone);
-    return numero ? `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}` : null;
+    // Direto no api.whatsapp.com: o redirecionamento do wa.me troca emojis por "�".
+    return numero ? `https://api.whatsapp.com/send?phone=${numero}&text=${encodeURIComponent(mensagem)}` : null;
 }
 
 // Abre a conversa sem texto pronto, para conferir se o casal respondeu.
