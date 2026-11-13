@@ -9,7 +9,8 @@ import ResultadoContatoModal, { AlvoResultado } from '../components/ResultadoCon
 import { ChaveMensagem, FollowupResumo, LIMITE_TENTATIVAS, MENSAGENS, ROTULO_RESULTADO, dataDoContato, esperaResposta, feitosEmOrdem, esperaVencida, linkConversa, linkWhatsApp, montarMensagem, resumoContato, temOrcamentoLead } from '../leadContato';
 import { conteudoEnviado, mensagemEnviada, naoRespondeu } from '../leadAcoes';
 import { escolherConteudo, whatsappDoItem } from '../nutricao';
-import { MESES_ANTES_RETOMAR, sugestaoRetomar } from '../leadContato';
+import { PREFIXO_PROPRIA, ehPropria, mensagensProprias, textoPropria } from '../mensagensProprias';
+import { MESES_ANTES_RETOMAR, montarTexto, sugestaoRetomar } from '../leadContato';
 import FecharLeadModal from '../components/FecharLeadModal';
 import { abrirContrato, enviarContrato, removerContrato } from '../contratos';
 import { formatarReais } from '../valores';
@@ -96,7 +97,7 @@ const LeadProfile = () => {
     const [evento, setEvento] = useState<EventoFechado | null>(null);
     const [fechando, setFechando] = useState(false);
     const [alvoResultado, setAlvoResultado] = useState<AlvoResultado<LeadCompleto> | null>(null);
-    const [mensagemEscolhida, setMensagemEscolhida] = useState<ChaveMensagem | ''>('');
+    const [mensagemEscolhida, setMensagemEscolhida] = useState<string>('');
 
     const carregar = async () => {
         if (!id) return;
@@ -162,8 +163,14 @@ const LeadProfile = () => {
     });
     const anteriores = comValores.filter(o => !atuais.includes(o));
     const resumo = resumoContato({ ...lead, lead_followups: followups }, temOrcamentoLead(lead.status, comValores.length > 0));
-    const chaveMensagem = mensagemEscolhida || resumo.mensagem;
-    const whatsapp = resumo.aguardando ? linkConversa(lead.phone) : whatsappDoItem(resumo, chaveMensagem);
+    // Mensagem propria (criada na tela Mensagens) sumiu: volta para a sugerida
+    const escolhaValida = mensagemEscolhida && (!ehPropria(mensagemEscolhida) || textoPropria(mensagemEscolhida) != null) ? mensagemEscolhida : '';
+    const chaveMensagem = escolhaValida || resumo.mensagem;
+    const whatsapp = resumo.aguardando
+        ? linkConversa(lead.phone)
+        : ehPropria(chaveMensagem)
+            ? linkWhatsApp(lead.phone, montarTexto(textoPropria(chaveMensagem)!, lead.name))
+            : whatsappDoItem(resumo, chaveMensagem as ChaveMensagem);
     const conteudoDaVez = resumo.nutricao ? escolherConteudo(lead, followups) : null;
     const emAtendimento = !perdido && lead.status !== ETAPA.fechado;
     const cidade = lead.cidades ? `${lead.cidades.nome}${lead.cidades.estados ? ` - ${lead.cidades.estados.sigla}` : ''}` : '';
@@ -417,11 +424,18 @@ const LeadProfile = () => {
                                 id="perfil-mensagem"
                                 className="w-full sm:w-auto bg-white border-2 border-secondary p-2 font-mono text-sm focus:border-primary outline-none"
                                 value={chaveMensagem}
-                                onChange={e => setMensagemEscolhida(e.target.value as ChaveMensagem)}
+                                onChange={e => setMensagemEscolhida(e.target.value)}
                             >
-                                {(Object.keys(MENSAGENS) as ChaveMensagem[]).map(chave => (
-                                    <option key={chave} value={chave}>{MENSAGENS[chave].titulo}{chave === resumo.mensagem ? ' (sugerida)' : ''}</option>
-                                ))}
+                                <optgroup label="Follow-up">
+                                    {(Object.keys(MENSAGENS) as ChaveMensagem[]).map(chave => (
+                                        <option key={chave} value={chave}>{MENSAGENS[chave].titulo}{chave === resumo.mensagem ? ' (sugerida)' : ''}</option>
+                                    ))}
+                                </optgroup>
+                                {mensagensProprias().length > 0 && (
+                                    <optgroup label="Minhas mensagens">
+                                        {mensagensProprias().map(m => <option key={m.id} value={PREFIXO_PROPRIA + m.id}>{m.titulo}</option>)}
+                                    </optgroup>
+                                )}
                             </select>
                         </div>
                     )}

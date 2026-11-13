@@ -15,10 +15,10 @@ import Financeiro from './pages/Financeiro';
 import LeadsBoard from './pages/LeadsBoard';
 import LeadProfile from './pages/LeadProfile';
 import Mensagens from './pages/Mensagens';
-import EnvioLista from './pages/EnvioLista';
 import AReceber from './pages/AReceber';
 import ContasFixas from './pages/ContasFixas';
 import { carregarMensagens } from './mensagensEditadas';
+import { carregarProprias } from './mensagensProprias';
 import { carregarConteudos } from './nutricao';
 import CalendarPage from './pages/CalendarPage';
 import Settings from './pages/Settings';
@@ -67,7 +67,7 @@ const ProtectedRoute = () => {
   // Atualiza a tela quando os textos editados chegam
   React.useEffect(() => {
     if (!isApproved) return;
-    Promise.all([carregarMensagens(), carregarConteudos()]).finally(() => setMensagensCarregadas(v => v + 1));
+    Promise.all([carregarMensagens(), carregarConteudos(), carregarProprias()]).finally(() => setMensagensCarregadas(v => v + 1));
   }, [isApproved]);
 
   if (loading || profileLoading) {
@@ -133,7 +133,6 @@ const App = () => {
               <Route path="leads" element={<LeadsBoard />} />
               <Route path="leads/:id" element={<LeadProfile />} />
               <Route path="mensagens" element={<Mensagens />} />
-              <Route path="mensagens/listas/:id" element={<EnvioLista />} />
               <Route path="calendar" element={<CalendarPage />} />
               <Route path="clients" element={<ClientRegistry />} />
               <Route path="events" element={<EventCanvas />} />
