@@ -75,16 +75,37 @@ describe('resumir', () => {
         expect(r.previsto).toBe(1);
     });
 
-    it('sem contrato, nao calcula percentual', () => {
+    it('sem contrato e sem recebido, nao calcula percentual', () => {
         const r = resumir({ ...base, contrato: 0 });
         expect(r.percentualPrevisto).toBeNull();
         expect(r.margemPrevista).toBe(-830.1);
     });
 
-    it('o recebido aparece a parte e nao entra na margem', () => {
+    it('recebido menor que o contrato aparece a parte e nao muda a margem', () => {
         const r = resumir({ ...base, recebido: 2500 });
         expect(r.recebido).toBe(2500);
+        expect(r.receita).toBe(5000);
         expect(r.margemReal).toBe(5000);
+    });
+
+    it('evento sem contrato usa o que foi recebido (caso Mariana e Marcos)', () => {
+        const r = resumir({
+            ...base,
+            contrato: 0,
+            custos: [],
+            recebido: 8082.9,
+            despesas: [{ categoria_id: MATERIAIS, valor: 5495.9 }],
+        });
+        expect(r.receita).toBe(8082.9);
+        expect(r.margemReal).toBe(2587);
+        expect(r.percentualReal).toBe(32);
+    });
+
+    it('recebido acima do contrato (extras) entra na margem', () => {
+        const r = resumir({ ...base, contrato: 3500, custos: [], recebido: 3550, despesas: [{ categoria_id: null, valor: 309.39 }] });
+        expect(r.contrato).toBe(3500);
+        expect(r.receita).toBe(3550);
+        expect(r.margemReal).toBe(3240.61);
     });
 });
 

@@ -50,6 +50,7 @@ const EventPlanner = () => {
    const [eventos, setEventos] = useState<EventoLista[]>([]);
    const [custos, setCustos] = useState<DoEvento<CustoPrevisto>[]>([]);
    const [despesas, setDespesas] = useState<DoEvento<Despesa>[]>([]);
+   const [recebidoPorEvento, setRecebidoPorEvento] = useState<Record<string, number>>({});
    const [categorias, setCategorias] = useState<Categoria[]>([]);
    const [carregando, setCarregando] = useState(true);
    const [erro, setErro] = useState('');
@@ -69,14 +70,20 @@ const EventPlanner = () => {
             .in('status', ABAS)
             .order('data_evento', { ascending: true, nullsFirst: false }),
          supabase.from('custos_previstos').select('evento_id, categoria_id, descricao, valor').order('created_at'),
-         supabase.from('transacoes').select('evento_id, categoria_id, valor').eq('tipo', 'despesa').not('evento_id', 'is', null),
+         supabase.from('transacoes').select('evento_id, tipo, categoria_id, valor').not('evento_id', 'is', null),
          supabase.from('categorias').select('id, nome').eq('tipo', 'despesa').order('nome'),
       ]);
       const falha = ev.error || cp.error || tr.error || cat.error;
       setErro(falha ? 'Não foi possível carregar o planejamento: ' + falha.message : '');
       if (ev.data) setEventos(ev.data as unknown as EventoLista[]);
       if (cp.data) setCustos(cp.data.map(c => ({ ...c, valor: Number(c.valor) })));
-      if (tr.data) setDespesas(tr.data.map(t => ({ ...t, valor: Number(t.valor) })));
+      if (tr.data) {
+         const lista = tr.data as { evento_id: string; tipo: string; categoria_id: number | null; valor: number }[];
+         setDespesas(lista.filter(t => t.tipo === 'despesa').map(t => ({ evento_id: t.evento_id, categoria_id: t.categoria_id, valor: Number(t.valor) })));
+         const recebido: Record<string, number> = {};
+         lista.filter(t => t.tipo === 'receita').forEach(t => { recebido[t.evento_id] = (recebido[t.evento_id] || 0) + Number(t.valor); });
+         setRecebidoPorEvento(recebido);
+      }
       if (cat.data) setCategorias(cat.data as Categoria[]);
       setCarregando(false);
    };
@@ -112,7 +119,7 @@ const EventPlanner = () => {
       contrato: Number(evento.valor_previsto) || 0,
       custos: custos.filter(c => c.evento_id === evento.id),
       despesas: despesas.filter(d => d.evento_id === evento.id),
-      recebido: 0,
+      recebido: recebidoPorEvento[evento.id] || 0,
       categorias,
    });
 
@@ -287,6 +294,11 @@ const EventPlanner = () => {
                                  Alterar contrato
                               </Link>
                            </div>
+                           {resumoModal.receita > resumoModal.contrato && (
+                              <p className="mt-1 text-xs text-gray-500">
+                                 {resumoModal.contrato === 0 ? 'Sem contrato preenchido' : 'Recebeu mais que o contrato'}: as margens usam o recebido, {formatarReais(resumoModal.receita)}.
+                              </p>
+                           )}
                         </div>
 
                         {/* Equipe */}
@@ -362,8 +374,8 @@ const EventPlanner = () => {
                            <h4 className="font-mono text-sm uppercase tracking-widest text-gray-400 mb-6 relative z-10">Resumo do planejamento</h4>
                            <div className="space-y-4 relative z-10">
                               <div className="flex justify-between items-center text-sm border-b border-gray-600 pb-2">
-                                 <span className="text-gray-300">Valor do contrato</span>
-                                 <span className="font-mono font-medium">{formatarReais(resumoModal.contrato)}</span>
+                                 <span className="text-gray-300">{resumoModal.receita > resumoModal.contrato ? 'Receita (recebido)' : 'Valor do contrato'}</span>
+                                 <span className="font-mono font-medium">{formatarReais(resumoModal.receita)}</span>
                               </div>
                               <div className="flex justify-between items-center text-sm border-b border-gray-600 pb-2">
                                  <span className="text-gray-300">Custos previstos</span>

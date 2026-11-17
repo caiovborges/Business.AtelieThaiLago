@@ -22,9 +22,11 @@ Nomes usados no código e nas telas. Ao criar algo novo, use estes termos.
 
 **Realizado**: as despesas lançadas no evento (tabela `transacoes`, tipo `despesa`), somadas por categoria. Despesa sem categoria aparece como "Sem categoria".
 
-**Margem prevista**: valor do contrato − custos previstos.
+**Receita do evento**: o maior entre o valor do contrato e o que já foi recebido. Cobre evento antigo sem contrato preenchido e evento que recebeu extras. Recebido menor que o contrato não reduz a receita: parcela ainda não vencida não é prejuízo.
 
-**Margem real**: valor do contrato − realizado. O que já foi recebido aparece à parte: parcela ainda não vencida não é prejuízo.
+**Margem prevista**: receita do evento − custos previstos.
+
+**Margem real**: receita do evento − realizado.
 
 **Diferença**: por categoria, realizado − previsto. Positiva quer dizer que gastou mais que o previsto.
 

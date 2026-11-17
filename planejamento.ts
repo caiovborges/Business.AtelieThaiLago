@@ -30,13 +30,15 @@ export interface LinhaCategoria {
 
 export interface Resumo {
     contrato: number;
+    // Base das margens: o maior entre contrato e recebido (ver GLOSSARY.md)
+    receita: number;
     previsto: number;
     realizado: number;
     recebido: number;
     equipe: number;
     margemPrevista: number;
     margemReal: number;
-    // Em % do contrato; null sem contrato
+    // Em % da receita; null sem receita
     percentualPrevisto: number | null;
     percentualReal: number | null;
     porCategoria: LinhaCategoria[];
@@ -85,20 +87,24 @@ export function resumir({ contrato, custos, despesas, recebido, categorias }: En
         .sort((a, b) => (a.nome === SEM_CATEGORIA ? 1 : b.nome === SEM_CATEGORIA ? -1 : a.nome.localeCompare(b.nome, 'pt-BR')));
 
     const contratoC = centavos(contrato);
+    const recebidoC = centavos(recebido);
+    // Evento sem contrato preenchido, ou que recebeu extras, usa o que entrou de fato
+    const receitaC = Math.max(contratoC, recebidoC);
     const previstoC = custos.reduce((s, c) => s + centavos(c.valor), 0);
     const realizadoC = despesas.reduce((s, d) => s + centavos(d.valor), 0);
     const equipeC = custos.filter(c => nomeDe(c.categoria_id) === CATEGORIA_EQUIPE).reduce((s, c) => s + centavos(c.valor), 0);
 
     return {
         contrato: reais(contratoC),
+        receita: reais(receitaC),
         previsto: reais(previstoC),
         realizado: reais(realizadoC),
-        recebido: reais(centavos(recebido)),
+        recebido: reais(recebidoC),
         equipe: reais(equipeC),
-        margemPrevista: reais(contratoC - previstoC),
-        margemReal: reais(contratoC - realizadoC),
-        percentualPrevisto: percentual(contratoC - previstoC, contratoC),
-        percentualReal: percentual(contratoC - realizadoC, contratoC),
+        margemPrevista: reais(receitaC - previstoC),
+        margemReal: reais(receitaC - realizadoC),
+        percentualPrevisto: percentual(receitaC - previstoC, receitaC),
+        percentualReal: percentual(receitaC - realizadoC, receitaC),
         porCategoria,
     };
 }
