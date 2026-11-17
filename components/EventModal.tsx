@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
 import { abrirContrato } from '../contratos';
+import { STATUS_EVENTO, corStatus } from '../statusEvento';
 
 interface Estado {
     id: number;
@@ -51,15 +52,6 @@ const SERVICOS = [
     'Identidade Visual',
     'Outros',
 ];
-
-const STATUS_COLORS: Record<string, string> = {
-    'Confirmado': 'bg-blue-100 text-blue-800 border-blue-300',
-    'Concluído': 'bg-green-100 text-green-800 border-green-300',
-    'Cancelado': 'bg-red-100 text-red-800 border-red-300',
-    'Orçamento': 'bg-purple-100 text-purple-800 border-purple-300',
-};
-
-const STATUS_OPTIONS = ['Confirmado', 'Concluído', 'Cancelado', 'Orçamento'];
 
 const EventModal = ({ isOpen, onClose, onSave, editingEvent }: EventModalProps) => {
     const { user } = useAuth();
@@ -300,14 +292,14 @@ const EventModal = ({ isOpen, onClose, onSave, editingEvent }: EventModalProps) 
                         <div>
                             <label className="block text-xs font-bold uppercase tracking-wider text-secondary mb-1">Status</label>
                             <div className="flex flex-wrap gap-2">
-                                {STATUS_OPTIONS.map(s => (
+                                {STATUS_EVENTO.map(s => (
                                     <button
                                         key={s}
                                         type="button"
                                         onClick={() => setStatus(s)}
                                         disabled={saving}
                                         className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider border transition-all ${status === s
-                                            ? STATUS_COLORS[s] + ' border-2 shadow-hard-sm'
+                                            ? corStatus(s) + ' border-2 shadow-hard-sm'
                                             : 'bg-white border-gray-200 text-gray-500 hover:border-secondary'
                                             }`}
                                     >

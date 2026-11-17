@@ -6,6 +6,8 @@ import { parseValor } from '../valores';
 import LancamentoModal from '../components/LancamentoModal';
 import { dataLocal, excluirLancamento } from '../lancamentos';
 import ParcelasEvento from '../components/ParcelasEvento';
+import PrevistoRealizado from '../components/PrevistoRealizado';
+import { corStatus } from '../statusEvento';
 
 interface Categoria {
    id: number;
@@ -32,14 +34,6 @@ interface Evento {
    clients?: { name: string } | null;
    cidades?: { nome: string; estados?: { sigla: string } } | null;
 }
-
-const STATUS_COLORS: Record<string, string> = {
-   'Pendente': 'bg-yellow-100 text-yellow-800 border-yellow-300',
-   'Confirmado': 'bg-blue-100 text-blue-800 border-blue-300',
-   'Concluído': 'bg-green-100 text-green-800 border-green-300',
-   'Cancelado': 'bg-red-100 text-red-800 border-red-300',
-   'Orçamento': 'bg-purple-100 text-purple-800 border-purple-300',
-};
 
 const EventLedger = () => {
    const { id } = useParams();
@@ -251,7 +245,7 @@ const EventLedger = () => {
                         {evento.nome}{eventDateFormatted ? ` - ${eventDateFormatted}` : ''}
                      </h1>
                      <div className="flex items-center gap-2 mt-1">
-                        <span className={`inline-flex items-center px-2 py-0.5 border text-xs font-mono font-bold uppercase tracking-wider ${STATUS_COLORS[evento.status] || 'bg-gray-100 text-gray-600 border-gray-300'}`}>
+                        <span className={`inline-flex items-center px-2 py-0.5 border text-xs font-mono font-bold uppercase tracking-wider ${corStatus(evento.status)}`}>
                            {evento.status}
                         </span>
                         <p className="text-gray-500 font-body text-sm">
@@ -536,6 +530,8 @@ const EventLedger = () => {
                   </div>
 
                   <div className="md:flex-1 md:min-h-0 md:overflow-y-auto p-4 md:p-6 pt-2 md:pt-2 space-y-4">
+                     <PrevistoRealizado eventoId={evento.id} versao={transacoes} />
+
                      {despesas.map(item => (
                         <div key={item.id} className="group bg-white border-2 border-secondary p-4 shadow-sm hover:shadow-hard-dark transition-all duration-200">
                            <div className="flex justify-between items-start mb-2">

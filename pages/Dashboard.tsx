@@ -6,6 +6,7 @@ import { useAuth } from '../AuthContext';
 import { parseValor } from '../valores';
 import LancamentoModal from '../components/LancamentoModal';
 import { dataLocal, excluirLancamento } from '../lancamentos';
+import { STATUS, fundoStatus } from '../statusEvento';
 
 interface Categoria {
   id: number;
@@ -40,13 +41,6 @@ interface FollowUp {
   type: string;
   leads?: { name: string } | null;
 }
-
-const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  'Pendente': { bg: 'bg-yellow-100', text: 'text-yellow-800' },
-  'Confirmado': { bg: 'bg-blue-100', text: 'text-blue-800' },
-  'Concluído': { bg: 'bg-green-100', text: 'text-green-800' },
-  'Cancelado': { bg: 'bg-red-100', text: 'text-red-800' },
-};
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -93,7 +87,7 @@ const Dashboard = () => {
       supabase
         .from('eventos')
         .select('id, nome, data_evento, status, servico, clients(name)')
-        .in('status', ['Pendente', 'Confirmado'])
+        .eq('status', STATUS.confirmado)
         .order('data_evento', { ascending: true })
         .limit(5),
       supabase
@@ -342,15 +336,14 @@ const Dashboard = () => {
                     const dateStr = event.data_evento
                       ? new Date(event.data_evento + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '').toUpperCase()
                       : 'S/D';
-                    const sc = STATUS_COLORS[event.status] || { bg: 'bg-gray-100', text: 'text-gray-600' };
-                    return (
+                                        return (
                       <div key={event.id} onClick={() => navigate(`/events/${event.id}`)} className="group flex items-start justify-between border-b border-gray-100 p-4 transition-colors hover:bg-gray-50 cursor-pointer">
                         <div>
                           <p className="font-mono text-xs font-bold text-primary mb-1">{dateStr}</p>
                           <p className="font-display text-sm font-bold text-secondary group-hover:text-primary transition-colors">{event.nome}</p>
                           <p className="text-xs text-gray-500">{event.clients?.name || (Array.isArray(event.servico) ? event.servico.join(', ') : event.servico) || ''}</p>
                         </div>
-                        <span className={`rounded-full border border-secondary px-2 py-0.5 font-mono text-[10px] font-medium uppercase ${sc.bg} ${sc.text}`}>
+                        <span className={`rounded-full border border-secondary px-2 py-0.5 font-mono text-[10px] font-medium uppercase ${fundoStatus(event.status)}`}>
                           {event.status}
                         </span>
                       </div>

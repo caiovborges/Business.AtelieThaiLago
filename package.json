@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "backup": "node scripts/backup.mjs",
-    "trocar-senha": "node scripts/trocar-senha.mjs"
+    "trocar-senha": "node scripts/trocar-senha.mjs",
+    "test": "vitest run"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.96.0",
@@ -26,6 +27,7 @@
     "@vitejs/plugin-react": "^5.0.0",
     "tailwindcss": "^4.1.18",
     "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "vite": "^6.2.0",
+    "vitest": "^3.2.4"
   }
 }

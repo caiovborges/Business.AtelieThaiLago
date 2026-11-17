@@ -4,13 +4,7 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
 import EventModal, { EventFormData, EditingEvent } from '../components/EventModal';
 import { abrirContrato } from '../contratos';
-
-const STATUS_COLORS: Record<string, string> = {
-   'Confirmado': 'bg-blue-100 text-blue-800 border-blue-300',
-   'Concluído': 'bg-green-100 text-green-800 border-green-300',
-   'Cancelado': 'bg-red-100 text-red-800 border-red-300',
-   'Orçamento': 'bg-purple-100 text-purple-800 border-purple-300',
-};
+import { STATUS_EVENTO, corStatus } from '../statusEvento';
 
 const SERVICO_ICONS: Record<string, string> = {
    'Árvore de Digitais': 'nature',
@@ -36,7 +30,7 @@ interface SupabaseEvento {
    cidades?: { nome: string; estado_id: number; estados?: { sigla: string; nome: string } } | null;
 }
 
-const ALL_STATUSES = ['Todos', 'Confirmado', 'Concluído', 'Cancelado', 'Orçamento'];
+const ALL_STATUSES = ['Todos', ...STATUS_EVENTO];
 const FILTROS_CONTRATO = ['Todos', 'Com contrato', 'Sem contrato'];
 
 const EventCanvas = () => {
@@ -309,7 +303,7 @@ const EventCanvas = () => {
                                     {/* Info */}
                                     <div className="flex-1 p-5 flex flex-col justify-center gap-2">
                                        <div className="flex flex-wrap items-center gap-3 mb-1">
-                                          <span className={`px-2 py-0.5 border text-[10px] font-bold uppercase tracking-wider ${STATUS_COLORS[event.status] || 'bg-gray-100 text-gray-600 border-gray-300'}`}>
+                                          <span className={`px-2 py-0.5 border text-[10px] font-bold uppercase tracking-wider ${corStatus(event.status)}`}>
                                              {event.status}
                                           </span>
                                           {(() => {
